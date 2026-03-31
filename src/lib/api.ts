@@ -13,7 +13,7 @@ async function callAPI<T>(
 
   const res = await fetch(APPS_SCRIPT_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "text/plain" },
     body: JSON.stringify(body),
   });
 
@@ -171,6 +171,57 @@ export async function apiAddAssignee(taskId: string, userId: string) {
 
 export async function apiRemoveAssignee(taskId: string, userId: string) {
   return callAPI("removeAssignee", { taskId, userId }, getToken());
+}
+
+// ─── Public Board (no auth) ──────────────────────────────────────────────────
+
+export async function apiGetPublicBoard(boardId: string) {
+  const url = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL || "";
+  const res = await fetch(`${url}?action=getPublicBoard&boardId=${boardId}`);
+  if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || "API error");
+  return data.data as {
+    board: { id: string; name: string; description: string };
+    columns: { id: string; name: string; position: number; color: string }[];
+    tasks: { id: string; columnId: string; title: string; priority: string; deadline: string | null; position: number; assignees: { id: string; name: string; avatarColor: string }[] }[];
+  };
+}
+
+// ─── API Key Management ───────────────────────────────────────────────────────
+
+export async function apiGenerateApiKey(name: string) {
+  return callAPI<{ key: string; name: string; createdAt: string }>("generateApiKey", { name }, getToken());
+}
+
+export async function apiListApiKeys() {
+  return callAPI<{ id: string; name: string; keyPreview: string; createdAt: string }[]>("listApiKeys", {}, getToken());
+}
+
+export async function apiRevokeApiKey(keyId: string) {
+  return callAPI("revokeApiKey", { keyId }, getToken());
+}
+
+// ─── User Management ─────────────────────────────────────────────────────────
+
+export async function apiGetUsers() {
+  return callAPI<User[]>("getUsers", {}, getToken());
+}
+
+export async function apiCreateUser(username: string, password: string, name: string, role: string) {
+  return callAPI("createUserAction", { username, password, name, role }, getToken());
+}
+
+export async function apiUpdateUser(targetUserId: string, updates: { name?: string; role?: string; isActive?: boolean; password?: string }) {
+  return callAPI("updateUserAction", { targetUserId, ...updates }, getToken());
+}
+
+export async function apiUpdateOwnProfile(name: string) {
+  return callAPI("updateOwnProfile", { name }, getToken());
+}
+
+export async function apiChangeOwnPassword(currentPassword: string, newPassword: string) {
+  return callAPI("changeOwnPassword", { currentPassword, newPassword }, getToken());
 }
 
 // ─── Approvals ────────────────────────────────────────────────────────────────

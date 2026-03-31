@@ -1,7 +1,7 @@
 "use client";
 import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Settings, ArrowLeft } from "lucide-react";
+import { Loader2, Settings, Share2 } from "lucide-react";
 import Link from "next/link";
 import { Topbar } from "@/components/layout/Topbar";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { useBoard } from "@/hooks/useBoard";
 import { useBoardStore } from "@/store/boardStore";
 import { getStoredUser } from "@/lib/auth";
+import { toast } from "@/components/ui/toaster";
 
 interface BoardPageProps {
   params: Promise<{ id: string }>;
@@ -45,11 +46,25 @@ export default function BoardPage({ params }: BoardPageProps) {
         title={displayData?.board?.name ?? "Loading…"}
         actions={
           <>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const url = `${window.location.origin}/share/${id}`;
+                navigator.clipboard.writeText(url).then(() =>
+                  toast({ title: "Share link copied!", description: url, variant: "success" })
+                );
+              }}
+              className="gap-1.5"
+            >
+              <Share2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Share</span>
+            </Button>
             {displayData?.board?.myRole === "owner" && (
               <Button size="sm" variant="outline" asChild>
                 <Link href={`/boards/${id}/settings`}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                  <Settings className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Settings</span>
                 </Link>
               </Button>
             )}
