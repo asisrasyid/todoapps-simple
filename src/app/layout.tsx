@@ -3,12 +3,12 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "SheetMaster – Kanban Todo",
-  description: "Multi-user Kanban board powered by Google Sheets",
+  title: "Personal Todo Track",
+  description: "Multi-user board powered by Google Sheets",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "SheetMaster",
+    title: "Track Todo",
   },
   formatDetection: { telephone: false },
 };
