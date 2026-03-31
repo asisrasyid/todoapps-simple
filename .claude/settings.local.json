@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d//**)",
+      "Bash(find 'D:/LEARN AND DEV/Todo_apps/sheetmaster-app' -type f -name *.env* -o -name tsconfig.json -o -name package.json -o -name next.config.js)",
+      "Bash(find 'D:/LEARN AND DEV/Todo_apps/sheetmaster-app/src' -type f -name *.ts -o -name *.tsx -o -name .env*)",
+      "Bash(grep -r \"NEXT_PUBLIC_APPS_SCRIPT_URL\\\\|process.env\\\\|YOUR_SCRIPT_ID\" 'D:/LEARN AND DEV/Todo_apps/sheetmaster-app/src' --include=*.ts --include=*.tsx)",
+      "Bash(npm run:*)",
+      "Bash(grep -r \"import.*from\\\\|export\\\\|async\\\\|await\" 'D:/LEARN AND DEV/Todo_apps/sheetmaster-app/src' --include=*.tsx --include=*.ts)",
+      "Bash(grep -r \"localStorage\\\\|sessionStorage\\\\|fetch\\\\|axios\" 'D:/LEARN AND DEV/Todo_apps/sheetmaster-app/src' --include=*.ts --include=*.tsx)",
+      "Bash(grep -r \"hardcoded\\\\|TODO\\\\|FIXME\\\\|XXX\\\\|HACK\\\\|secret\\\\|password\\\\|API_KEY\" 'D:/LEARN AND DEV/Todo_apps/sheetmaster-app/src' --include=*.ts --include=*.tsx)",
+      "Bash(npm install:*)"
+    ]
+  }
+}
