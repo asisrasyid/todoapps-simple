@@ -173,6 +173,19 @@ export async function apiRemoveAssignee(taskId: string, userId: string) {
   return callAPI("removeAssignee", { taskId, userId }, getToken());
 }
 
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+
+export interface DashboardData {
+  activity: Record<string, number>;
+  stats: { total: number; completed: number; inProgress: number; overdue: number; pendingApprovals: number };
+  staleTasks: { id: string; title: string; boardId: string; boardName: string; columnName: string; priority: string; updatedAt: string; daysSinceUpdate: number }[];
+  recentActivity: { id: string; title: string; boardId: string; boardName: string; columnName: string; priority: string; updatedAt: string; isDone: boolean }[];
+}
+
+export async function apiGetDashboardData() {
+  return callAPI<DashboardData>("getDashboardData", {}, getToken());
+}
+
 // ─── Public Board (no auth) ──────────────────────────────────────────────────
 
 export async function apiGetPublicBoard(boardId: string) {

@@ -24,7 +24,8 @@ import { useSidebar } from "@/components/SidebarProvider";
 import { useTheme } from "@/components/ThemeProvider";
 
 const navItems = [
-  { href: "/boards", label: "Boards", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/boards", label: "Boards", icon: CheckSquare },
   { href: "/approvals", label: "Approvals", icon: ShieldCheck, needsApprover: true },
   { href: "/profile", label: "Profile", icon: User },
 ];

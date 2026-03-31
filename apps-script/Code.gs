@@ -74,6 +74,9 @@ function doPost(e) {
       case "updateOwnProfile": return updateOwnProfile(params, user.id);
       case "changeOwnPassword": return changeOwnPassword(params, user.id);
 
+      // Dashboard
+      case "getDashboardData": return getDashboardData(params, user.id);
+
       // API Key Management
       case "generateApiKey": return generateApiKey(params, user.id);
       case "listApiKeys": return listApiKeys(params, user.id);

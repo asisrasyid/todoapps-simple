@@ -7,7 +7,7 @@ export default function RootPage() {
   const router = useRouter();
   useEffect(() => {
     if (isAuthenticated()) {
-      router.replace("/boards");
+      router.replace("/dashboard");
     } else {
       router.replace("/login");
     }

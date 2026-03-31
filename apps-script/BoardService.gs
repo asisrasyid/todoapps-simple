@@ -378,6 +378,120 @@ function reorderColumns(params, userId) {
   return ok(null);
 }
 
+// ─── Dashboard Data ───────────────────────────────────────────────────────────
+
+function getDashboardData(params, userId) {
+  var memberships = findRows("Board_Members", "user_id", userId);
+  var boardIds = memberships.map(function(m) { return m.board_id; });
+
+  if (boardIds.length === 0) {
+    return ok({ activity: {}, stats: { total: 0, completed: 0, inProgress: 0, overdue: 0, pendingApprovals: 0 }, staleTasks: [], recentActivity: [] });
+  }
+
+  var allTasks = getAllRows("Tasks").filter(function(t) { return boardIds.indexOf(t.board_id) !== -1; });
+  var allAssignees = getAllRows("Task_Assignees");
+  var myTaskIds = allAssignees.filter(function(a) { return a.user_id === userId; }).map(function(a) { return a.task_id; });
+
+  var myTasks = allTasks.filter(function(t) {
+    return t.created_by === userId || myTaskIds.indexOf(t.id) !== -1;
+  });
+
+  // Activity per day (last 365 days)
+  var oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+  var activityMap = {};
+  myTasks.forEach(function(t) {
+    var dates = [t.created_at];
+    if (t.updated_at && t.updated_at !== t.created_at) dates.push(t.updated_at);
+    dates.forEach(function(d) {
+      if (!d) return;
+      var dt = new Date(d);
+      if (dt >= oneYearAgo) {
+        var key = dt.toISOString().slice(0, 10);
+        activityMap[key] = (activityMap[key] || 0) + 1;
+      }
+    });
+  });
+
+  // Find last column per board = "done"
+  var allColumns = getAllRows("Columns").filter(function(c) { return boardIds.indexOf(c.board_id) !== -1; });
+  var boardLastCol = {};
+  allColumns.forEach(function(c) {
+    var pos = parseInt(c.position) || 0;
+    if (!boardLastCol[c.board_id] || pos > boardLastCol[c.board_id].pos) {
+      boardLastCol[c.board_id] = { colId: c.id, pos: pos };
+    }
+  });
+  var doneColIds = Object.keys(boardLastCol).map(function(bid) { return boardLastCol[bid].colId; });
+
+  var now = new Date();
+  var completed = myTasks.filter(function(t) { return doneColIds.indexOf(t.column_id) !== -1; }).length;
+  var overdue = myTasks.filter(function(t) {
+    return t.deadline && new Date(t.deadline) < now && doneColIds.indexOf(t.column_id) === -1;
+  }).length;
+
+  // Pending approvals where user is owner/approver
+  var pendingApprovals = getAllRows("Approvals").filter(function(a) {
+    if (a.status !== "pending") return false;
+    var task = allTasks.find(function(t) { return t.id === a.task_id; });
+    if (!task) return false;
+    var role = getBoardRole(task.board_id, userId);
+    return role === "owner" || role === "approver";
+  }).length;
+
+  // Stale tasks (not done, not updated in >3 days)
+  var threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  var colMap = {};
+  allColumns.forEach(function(c) { colMap[c.id] = c; });
+  var boardMap = {};
+  getAllRows("Boards").filter(function(b) { return boardIds.indexOf(b.id) !== -1; })
+    .forEach(function(b) { boardMap[b.id] = b; });
+
+  var staleTasks = myTasks
+    .filter(function(t) {
+      if (doneColIds.indexOf(t.column_id) !== -1) return false;
+      var lastUpdate = new Date(t.updated_at || t.created_at);
+      return lastUpdate < threeDaysAgo;
+    })
+    .map(function(t) {
+      var lastUpdate = new Date(t.updated_at || t.created_at);
+      var days = Math.floor((now.getTime() - lastUpdate.getTime()) / (24 * 60 * 60 * 1000));
+      return {
+        id: t.id, title: t.title, boardId: t.board_id,
+        boardName: boardMap[t.board_id] ? boardMap[t.board_id].name : "",
+        columnName: colMap[t.column_id] ? colMap[t.column_id].name : "",
+        priority: t.priority || "medium",
+        updatedAt: t.updated_at || t.created_at,
+        daysSinceUpdate: days
+      };
+    })
+    .sort(function(a, b) { return b.daysSinceUpdate - a.daysSinceUpdate; });
+
+  // Recent activity (last 10 tasks by updated_at)
+  var recentActivity = myTasks
+    .slice()
+    .sort(function(a, b) {
+      return new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime();
+    })
+    .slice(0, 10)
+    .map(function(t) {
+      return {
+        id: t.id, title: t.title, boardId: t.board_id,
+        boardName: boardMap[t.board_id] ? boardMap[t.board_id].name : "",
+        columnName: colMap[t.column_id] ? colMap[t.column_id].name : "",
+        priority: t.priority || "medium",
+        updatedAt: t.updated_at || t.created_at,
+        isDone: doneColIds.indexOf(t.column_id) !== -1
+      };
+    });
+
+  return ok({
+    activity: activityMap,
+    stats: { total: myTasks.length, completed: completed, inProgress: myTasks.length - completed, overdue: overdue, pendingApprovals: pendingApprovals },
+    staleTasks: staleTasks,
+    recentActivity: recentActivity
+  });
+}
+
 // ─── Public Board (no auth) ───────────────────────────────────────────────────
 
 function getPublicBoard(boardId) {
