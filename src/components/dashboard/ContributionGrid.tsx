@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 interface ContributionGridProps {
   activity: Record<string, number>;
+  rangeLabel?: string;
 }
 
 const LEVELS = [
@@ -24,7 +25,7 @@ function level(count: number) {
 
 const DAY_LABELS = ["", "Mon", "", "Wed", "", "Fri", ""];
 
-export function ContributionGrid({ activity }: ContributionGridProps) {
+export function ContributionGrid({ activity, rangeLabel }: ContributionGridProps) {
   const { weeks, monthLabels, total } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -64,7 +65,8 @@ export function ContributionGrid({ activity }: ContributionGridProps) {
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm text-muted-foreground">
-          <span className="font-semibold text-foreground">{total}</span> activities in the last year
+          <span className="font-semibold text-foreground">{total}</span>{" "}
+          {rangeLabel ?? "activities in the last year"}
         </p>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span>Less</span>

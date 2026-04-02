@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useDashboard } from "@/hooks/useDashboard";
 import { ContributionGrid } from "@/components/dashboard/ContributionGrid";
+import { ActivityFilter, DateRange } from "@/components/dashboard/ActivityFilter";
 import {
   NotificationBanner,
   triggerStaleNotification,
@@ -52,6 +53,7 @@ function StatCard({
 export default function DashboardPage() {
   const router = useRouter();
   const { data, isLoading, isError } = useDashboard();
+  const [filterRange, setFilterRange] = useState<DateRange>({ from: "", to: "" });
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -84,6 +86,40 @@ export default function DashboardPage() {
   }
 
   const { stats, activity, staleTasks, recentActivity } = data;
+
+  const filteredActivity = useMemo(() => {
+    const { from, to } = filterRange;
+    if (!from && !to) return activity;
+    return Object.fromEntries(
+      Object.entries(activity).filter(([date]) => {
+        if (from && date < from) return false;
+        if (to && date > to) return false;
+        return true;
+      })
+    );
+  }, [activity, filterRange]);
+
+  const filteredRecentActivity = useMemo(() => {
+    const { from, to } = filterRange;
+    if (!from && !to) return recentActivity;
+    return recentActivity.filter((t) => {
+      const date = t.updatedAt.slice(0, 10);
+      if (from && date < from) return false;
+      if (to && date > to) return false;
+      return true;
+    });
+  }, [recentActivity, filterRange]);
+
+  const activityRangeLabel = useMemo(() => {
+    const { from, to } = filterRange;
+    const total = Object.values(filteredActivity).reduce((s, v) => s + v, 0);
+    if (!from && !to) return undefined; // ContributionGrid uses default label
+    const fmtDate = (d: string) =>
+      new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    if (from && to) return `activities from ${fmtDate(from)} to ${fmtDate(to)}`;
+    if (from) return `activities from ${fmtDate(from)}`;
+    return `activities up to ${fmtDate(to)}`;
+  }, [filteredActivity, filterRange]);
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6 max-w-5xl mx-auto w-full">
@@ -167,18 +203,31 @@ export default function DashboardPage() {
         </Link>
       )}
 
+      {/* Activity filter */}
+      <div className="rounded-xl border border-border bg-card p-4 md:p-5">
+        <h2 className="text-sm font-semibold text-foreground mb-3">Filter Activity</h2>
+        <ActivityFilter value={filterRange} onChange={setFilterRange} />
+      </div>
+
       {/* Contribution grid */}
       <div className="rounded-xl border border-border bg-card p-4 md:p-5">
         <h2 className="text-sm font-semibold text-foreground mb-4">Activity</h2>
-        <ContributionGrid activity={activity} />
+        <ContributionGrid activity={filteredActivity} rangeLabel={activityRangeLabel} />
       </div>
 
       {/* Recent activity */}
-      {recentActivity.length > 0 && (
+      {filteredRecentActivity.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-4 md:p-5">
-          <h2 className="text-sm font-semibold text-foreground mb-3">Recent Activity</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-foreground">Recent Activity</h2>
+            {(filterRange.from || filterRange.to) && (
+              <span className="text-xs text-muted-foreground">
+                {filteredRecentActivity.length} result{filteredRecentActivity.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
           <ul className="divide-y divide-border">
-            {recentActivity.map((t) => (
+            {filteredRecentActivity.map((t) => (
               <li key={t.id} className="py-2.5 flex items-center gap-3">
                 <CheckCircle2
                   className={cn(
