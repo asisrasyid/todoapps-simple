@@ -1,15 +1,16 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   CheckCircle2,
   Clock,
-  AlertTriangle,
   ShieldCheck,
   TrendingUp,
   ArrowRight,
   Filter,
+  AlertTriangle,
 } from "lucide-react";
 import { useDashboard } from "@/hooks/useDashboard";
 import { ContributionGrid } from "@/components/dashboard/ContributionGrid";
@@ -22,6 +23,8 @@ import {
 } from "@/components/NotificationManager";
 import { isAuthenticated } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { DashboardSkeleton } from "@/components/skeletons/DashboardSkeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 const PRIORITY_COLOR: Record<string, string> = {
   high: "text-red-500",
@@ -137,10 +140,8 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="flex h-full flex-col overflow-hidden">
-        <Topbar title="Dashboard" />
-        <div className="flex flex-1 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
+        <Topbar title="Dashboard" actions={filterActions} />
+        <DashboardSkeleton />
       </div>
     );
   }
@@ -148,11 +149,12 @@ export default function DashboardPage() {
   if (isError || !data) {
     return (
       <div className="flex h-full flex-col overflow-hidden">
-        <Topbar title="Dashboard" />
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
-          <AlertTriangle className="h-8 w-8" />
-          <p className="text-sm">Failed to load dashboard data.</p>
-        </div>
+        <Topbar title="Dashboard" actions={filterActions} />
+        <ErrorState
+          title="Gagal memuat dashboard"
+          message="Tidak dapat terhubung ke server. Periksa koneksi internet Anda."
+          onRetry={() => window.location.reload()}
+        />
       </div>
     );
   }
@@ -163,7 +165,7 @@ export default function DashboardPage() {
     <div className="flex h-full flex-col overflow-hidden">
       <Topbar title="Dashboard" actions={filterActions} />
 
-      <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4 md:p-5">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4 min-[1300px]:overflow-hidden min-[1300px]:p-5">
         {/* Notification banner */}
         <NotificationBanner onDismiss={() => {}} />
 
@@ -200,32 +202,29 @@ export default function DashboardPage() {
         )}
 
         {/* Stats cards */}
-        <div className="shrink-0 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard
-            label="Total Tasks"
-            value={stats.total}
-            icon={TrendingUp}
-            color="bg-primary/15 text-primary"
-          />
-          <StatCard
-            label="Completed"
-            value={stats.completed}
-            icon={CheckCircle2}
-            color="bg-green-500/15 text-green-500"
-          />
-          <StatCard
-            label="In Progress"
-            value={stats.inProgress}
-            icon={Clock}
-            color="bg-blue-500/15 text-blue-500"
-          />
-          <StatCard
-            label="Overdue"
-            value={stats.overdue}
-            icon={AlertTriangle}
-            color="bg-red-500/15 text-red-500"
-          />
-        </div>
+        <motion.div
+          className="shrink-0 grid grid-cols-2 gap-3 sm:grid-cols-4"
+          initial="hidden"
+          animate="visible"
+          variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
+        >
+          {[
+            { label: "Total Tasks", value: stats.total, icon: TrendingUp, color: "bg-primary/15 text-primary" },
+            { label: "Completed", value: stats.completed, icon: CheckCircle2, color: "bg-sky-500/15 text-sky-400" },
+            { label: "In Progress", value: stats.inProgress, icon: Clock, color: "bg-blue-500/15 text-blue-500" },
+            { label: "Overdue", value: stats.overdue, icon: AlertTriangle, color: "bg-red-500/15 text-red-500" },
+          ].map((item) => (
+            <motion.div
+              key={item.label}
+              variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              whileHover={{ y: -3, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <StatCard label={item.label} value={item.value} icon={item.icon} color={item.color} />
+            </motion.div>
+          ))}
+        </motion.div>
 
         {/* Pending approvals badge */}
         {stats.pendingApprovals > 0 && (
@@ -244,20 +243,24 @@ export default function DashboardPage() {
           </Link>
         )}
 
-        {/* Activity + Recent Activity — side by side, each scrollable */}
-        <div className="flex-1 min-h-0 grid grid-cols-1 gap-4 md:grid-cols-[1fr_300px]">
-          {/* Contribution grid card */}
-          <div className="flex min-h-[220px] flex-col overflow-hidden rounded-xl border border-border bg-card p-4 md:min-h-0 md:p-5">
-            <h2 className="mb-4 shrink-0 text-sm font-semibold text-foreground">Activity</h2>
-            <div className="flex-1 overflow-auto">
+        {/* Activity + Recent Activity — side by side ≥1300px, stacked below */}
+        <div className="grid grid-cols-1 gap-3 min-[1300px]:flex-1 min-[1300px]:min-h-0 min-[1300px]:grid-cols-[3fr_2fr]">
+          {/* Activity card */}
+          <div className="flex flex-col rounded-2xl border-2 border-border bg-card p-3 shadow-toon-sm
+                          min-[1300px]:overflow-hidden min-[1300px]:min-h-0 min-[1300px]:p-4">
+            <h2 className="mb-2 shrink-0 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              Activity
+            </h2>
+            <div className="min-[1300px]:flex-1 min-[1300px]:overflow-hidden min-[1300px]:min-h-0">
               <ContributionGrid activity={filteredActivity} rangeLabel={activityRangeLabel} />
             </div>
           </div>
 
           {/* Recent activity card */}
-          <div className="flex min-h-[200px] flex-col overflow-hidden rounded-xl border border-border bg-card p-4 md:min-h-0 md:p-5">
-            <div className="mb-3 flex shrink-0 items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Recent Activity</h2>
+          <div className="flex flex-col overflow-hidden rounded-2xl border-2 border-border bg-card p-3 shadow-toon-sm
+                          h-[280px] min-[1300px]:h-auto min-[1300px]:min-h-0 min-[1300px]:p-4">
+            <div className="mb-2 flex shrink-0 items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Recent Activity</h2>
               {hasFilter && (
                 <span className="text-xs text-muted-foreground">
                   {filteredRecentActivity.length} result{filteredRecentActivity.length !== 1 ? "s" : ""}
@@ -265,13 +268,26 @@ export default function DashboardPage() {
               )}
             </div>
             {filteredRecentActivity.length === 0 ? (
-              <div className="flex flex-1 items-center justify-center">
-                <p className="text-xs text-muted-foreground">No activity in this range</p>
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center px-2">
+                <TrendingUp className="h-8 w-8 text-muted-foreground/30" />
+                <p className="text-xs text-muted-foreground">
+                  {hasFilter ? "Tidak ada aktivitas di rentang waktu ini" : "Mulai mengerjakan task untuk melihat aktivitas di sini"}
+                </p>
+                {!hasFilter && (
+                  <Link href="/boards" className="text-xs text-primary hover:underline">
+                    Buka Boards →
+                  </Link>
+                )}
               </div>
             ) : (
-              <ul className="flex-1 divide-y divide-border overflow-y-auto">
+              <ul className="flex-1 space-y-0.5 overflow-y-auto">
                 {filteredRecentActivity.map((t) => (
-                  <li key={t.id} className="flex items-center gap-3 py-2.5">
+                  <motion.li
+                    key={t.id}
+                    className="flex items-center gap-3 px-2 py-2 rounded-lg cursor-default"
+                    whileHover={{ x: 4, backgroundColor: "hsl(var(--accent))" }}
+                    transition={{ duration: 0.15 }}
+                  >
                     <CheckCircle2
                       className={cn(
                         "h-4 w-4 shrink-0",
@@ -281,7 +297,7 @@ export default function DashboardPage() {
                     <div className="min-w-0 flex-1">
                       <Link
                         href={`/boards/${t.boardId}`}
-                        className="block truncate text-sm text-foreground hover:underline"
+                        className="block truncate text-sm text-foreground hover:text-primary transition-colors"
                       >
                         {t.title}
                       </Link>
@@ -297,7 +313,7 @@ export default function DashboardPage() {
                     >
                       {t.priority}
                     </span>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
             )}

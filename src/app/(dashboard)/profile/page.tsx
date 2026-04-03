@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   User,
@@ -55,9 +56,14 @@ export default function ProfilePage() {
     <>
       <Topbar title="Profile" />
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-2xl mx-auto space-y-6">
+        <motion.div
+          className="max-w-2xl mx-auto space-y-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        >
           {/* Tabs */}
-          <div className="flex gap-1 rounded-lg border border-border bg-card p-1 w-fit">
+          <div className="flex gap-1 rounded-2xl border-2 border-border bg-card p-1 w-fit">
             <button
               onClick={() => setTab("profile")}
               className={cn(
@@ -101,7 +107,7 @@ export default function ProfilePage() {
           {tab === "profile" && <MyProfile />}
           {tab === "users" && isOwner && <ManageUsers />}
           {tab === "apikeys" && <ApiKeys />}
-        </div>
+        </motion.div>
       </div>
     </>
   );

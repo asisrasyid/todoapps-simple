@@ -29,7 +29,7 @@ const Toast = React.forwardRef<
   <ToastPrimitive.Root
     ref={ref}
     className={cn(
-      "group pointer-events-auto relative flex w-full items-start justify-between space-x-3 overflow-hidden rounded-md border p-4 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-bottom-full",
+      "group pointer-events-auto relative flex w-full items-start justify-between space-x-3 overflow-hidden rounded-md border p-4 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-bottom-2 data-[state=open]:duration-200",
       {
         "bg-card border-border": variant === "default",
         "bg-destructive border-destructive text-destructive-foreground": variant === "destructive",
@@ -113,7 +113,7 @@ export function Toaster() {
   return (
     <ToastProvider>
       {toastList.map((t) => (
-        <Toast key={t.id} variant={t.variant} open>
+        <Toast key={t.id} variant={t.variant} open role={t.variant === "destructive" ? "alert" : "status"} aria-live={t.variant === "destructive" ? "assertive" : "polite"}>
           <div className="flex-1">
             <ToastTitle>{t.title}</ToastTitle>
             {t.description && <ToastDescription>{t.description}</ToastDescription>}

@@ -1,7 +1,7 @@
 "use client";
 import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Settings, Share2 } from "lucide-react";
+import { Settings, Share2, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Topbar } from "@/components/layout/Topbar";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { useBoard } from "@/hooks/useBoard";
 import { useBoardStore } from "@/store/boardStore";
 import { getStoredUser } from "@/lib/auth";
 import { toast } from "@/components/ui/toaster";
+import { KanbanSkeleton } from "@/components/skeletons/KanbanSkeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 interface BoardPageProps {
   params: Promise<{ id: string }>;
@@ -29,11 +31,13 @@ export default function BoardPage({ params }: BoardPageProps) {
 
   if (isError) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
-        <p>Failed to load board. You may not have access.</p>
-        <Button variant="outline" onClick={() => router.push("/boards")}>
-          Go back
-        </Button>
+      <div className="flex h-full flex-col overflow-hidden">
+        <Topbar title="Board" />
+        <ErrorState
+          title="Gagal memuat board"
+          message="Tidak dapat memuat data board. Anda mungkin tidak memiliki akses, atau koneksi bermasalah."
+          onRetry={() => router.push("/boards")}
+        />
       </div>
     );
   }
@@ -43,7 +47,15 @@ export default function BoardPage({ params }: BoardPageProps) {
   return (
     <>
       <Topbar
-        title={displayData?.board?.name ?? "Loading…"}
+        title={
+          <span className="flex items-center gap-1.5 text-sm">
+            <Link href="/boards" className="text-muted-foreground hover:text-foreground transition-colors hidden sm:inline">
+              Boards
+            </Link>
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 hidden sm:inline" aria-hidden="true" />
+            <span className="font-semibold truncate">{displayData?.board?.name ?? "Loading…"}</span>
+          </span>
+        }
         actions={
           <>
             <Button
@@ -74,9 +86,7 @@ export default function BoardPage({ params }: BoardPageProps) {
 
       <div className="flex-1 overflow-hidden">
         {isLoading && !displayData ? (
-          <div className="flex h-full items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <KanbanSkeleton />
         ) : displayData ? (
           <KanbanBoard
             boardData={displayData}

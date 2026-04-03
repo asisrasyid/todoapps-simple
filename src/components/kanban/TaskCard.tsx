@@ -44,20 +44,27 @@ export function TaskCard({ task, myRole, isDragOverlay, onClick }: TaskCardProps
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative rounded-lg border border-border bg-card border-l-2 cursor-pointer select-none",
+        "group relative rounded-xl border-2 border-border bg-card border-l-[3px] cursor-pointer select-none",
+        "hover:-translate-y-1 hover:shadow-toon-primary",
+        "transition-[transform,box-shadow] duration-150",
         priorityConfig.borderColor,
         isDragging && "opacity-30 ring-2 ring-primary/40",
         isDragOverlay && "rotate-1 scale-105 shadow-2xl shadow-black/40 ring-2 ring-primary/60",
-        "hover:border-border/80 hover:shadow-md transition-all duration-150"
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
       )}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open task: ${task.title}`}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
     >
       {/* Drag handle */}
       {canEdit(myRole) && (
         <div
           {...attributes}
           {...listeners}
-          className="absolute left-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-10 p-0.5 rounded text-muted-foreground/40 hover:text-muted-foreground"
+          aria-label={`Drag to move task: ${task.title}`}
+          className="absolute left-1.5 top-1/2 -translate-y-1/2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-10 p-0.5 rounded text-muted-foreground/40 hover:text-muted-foreground"
           onClick={(e) => e.stopPropagation()}
         >
           <GripVertical className="h-3.5 w-3.5" />
@@ -71,7 +78,7 @@ export function TaskCard({ task, myRole, isDragOverlay, onClick }: TaskCardProps
             {task.labels.map((label) => (
               <span
                 key={label.id}
-                className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                className="rounded-full px-2 py-0.5 text-xs font-semibold"
                 style={{ backgroundColor: label.color + "25", color: label.color }}
               >
                 {label.name}
@@ -87,10 +94,10 @@ export function TaskCard({ task, myRole, isDragOverlay, onClick }: TaskCardProps
         {hasPendingApproval && (
           <div className="mt-2 flex items-center gap-1.5 text-amber-400">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
             </span>
-            <span className="text-[10px] font-semibold uppercase tracking-wide">Pending Approval</span>
+            <span className="text-xs font-semibold uppercase tracking-wide">Pending Approval</span>
           </div>
         )}
 
@@ -101,7 +108,7 @@ export function TaskCard({ task, myRole, isDragOverlay, onClick }: TaskCardProps
             {totalSubTasks > 0 && (
               <div className="flex items-center gap-1 text-muted-foreground">
                 <CheckSquare className="h-3 w-3" />
-                <span className="text-[10px]">
+                <span className="text-xs">
                   {completedSubTasks}/{totalSubTasks}
                 </span>
               </div>
@@ -110,14 +117,14 @@ export function TaskCard({ task, myRole, isDragOverlay, onClick }: TaskCardProps
             {attachmentCount > 0 && (
               <div className="flex items-center gap-1 text-muted-foreground">
                 <Paperclip className="h-3 w-3" />
-                <span className="text-[10px]">{attachmentCount}</span>
+                <span className="text-xs">{attachmentCount}</span>
               </div>
             )}
             {/* Deadline */}
             {task.deadline && (
               <div
                 className={cn(
-                  "flex items-center gap-1 text-[10px]",
+                  "flex items-center gap-1 text-xs",
                   isOverdue(task.deadline) ? "text-red-400" : "text-muted-foreground"
                 )}
               >

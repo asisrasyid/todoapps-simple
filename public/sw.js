@@ -40,16 +40,17 @@ self.addEventListener("fetch", (event) => {
   if (url.hostname.includes("script.google.com")) return;
   if (!url.protocol.startsWith("http")) return;
 
-  // _next/static → cache first (immutable assets)
+  // _next/static → network first in dev (chunks have hash-based names so cache is safe in prod,
+  // but dev server reuses chunk names without cache-busting — always fetch fresh)
   if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(
-      caches.match(event.request).then(
-        (cached) => cached || fetch(event.request).then((res) => {
+      fetch(event.request).then((res) => {
+        if (res.ok) {
           const clone = res.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          return res;
-        })
-      )
+        }
+        return res;
+      }).catch(() => caches.match(event.request))
     );
     return;
   }

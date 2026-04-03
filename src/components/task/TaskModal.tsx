@@ -12,7 +12,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { Task, Role, BoardMember, Label, Priority } from "@/types";
-import { canEdit, canManageColumns, PRIORITY_CONFIG, LABEL_COLORS, formatDate, isOverdue } from "@/lib/utils";
+import { canEdit, canManageColumns, PRIORITY_CONFIG, LABEL_COLORS, isOverdue } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +29,7 @@ import {
   useLabelMutations,
   useAssigneeMutations,
 } from "@/hooks/useBoard";
+import { motion } from "framer-motion";
 
 interface TaskModalProps {
   task: Task;
@@ -103,10 +105,28 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
   return (
     <div className="fixed inset-0 z-50 flex">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        className="absolute inset-0 backdrop-blur-xl bg-background/15"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        onClick={() => {
+          const hasUnsaved = (editingTitle && title !== task.title) || (editingDesc && description !== (task.description || ""));
+          if (hasUnsaved && !confirm("Ada perubahan yang belum disimpan. Tutup tanpa menyimpan?")) return;
+          onClose();
+        }}
+      />
 
       {/* Sheet from right */}
-      <div className="relative ml-auto flex h-full w-full max-w-2xl flex-col bg-card shadow-2xl animate-in slide-in-from-right-8 duration-200">
+      <motion.div
+        className="relative ml-auto flex h-full w-full max-w-2xl flex-col bg-card border-l-2 border-border"
+        style={{ boxShadow: "-6px 0 32px hsl(var(--toon-shadow-base) / 0.5)" }}
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+      >
         {/* Header */}
         <div className="flex items-start gap-3 border-b border-border px-6 py-4">
           <div className="flex-1 min-w-0">
@@ -124,7 +144,7 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
               />
             ) : (
               <h2
-                className={`text-lg font-semibold leading-snug ${editable ? "cursor-pointer hover:text-primary transition-colors" : ""}`}
+                className={`text-lg font-semibold leading-snug ${editable ? "cursor-text hover:text-primary transition-colors border-b border-dashed border-transparent hover:border-primary/40" : ""}`}
                 onClick={() => editable && setEditingTitle(true)}
                 title={editable ? "Click to edit title" : undefined}
               >
@@ -135,12 +155,13 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {editable && (
-              <Button size="icon-sm" variant="ghost" onClick={handleDelete} className="text-muted-foreground hover:text-destructive">
+              <Button size="icon-sm" variant="ghost" aria-label="Delete task" onClick={handleDelete} className="text-muted-foreground hover:text-destructive">
                 <Trash2 className="h-4 w-4" />
               </Button>
             )}
-            <Button size="icon-sm" variant="ghost" onClick={onClose}>
+            <Button variant="ghost" aria-label="Close task detail" onClick={onClose} className="h-9 gap-1.5 px-2 md:h-7 md:w-7 md:px-0">
               <X className="h-4 w-4" />
+              <span className="text-sm md:hidden">Tutup</span>
             </Button>
           </div>
         </div>
@@ -177,21 +198,14 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
             </Popover>
 
             {/* Deadline */}
-            <div className="relative">
-              <label
-                className={`flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm transition-colors ${editable ? "hover:bg-accent cursor-pointer" : "cursor-default opacity-70"} ${isOverdue(task.deadline) ? "text-red-400 border-red-400/40" : ""}`}
-              >
-                <Calendar className="h-4 w-4" />
-                <span>{task.deadline ? formatDate(task.deadline) : "No deadline"}</span>
-                {editable && (
-                  <input
-                    type="date"
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                    value={task.deadline?.split("T")[0] || ""}
-                    onChange={(e) => handleDeadlineChange(e.target.value)}
-                  />
-                )}
-              </label>
+            <div className={isOverdue(task.deadline) ? "[&_button]:border-red-400/60 [&_button]:text-red-400" : ""}>
+              <DatePicker
+                value={task.deadline?.split("T")[0] || ""}
+                onChange={handleDeadlineChange}
+                placeholder="Set deadline"
+                disabled={!editable}
+                clearable
+              />
             </div>
           </div>
 
@@ -216,7 +230,7 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
                         ? removeAssignee.mutate({ taskId: task.id, userId: m.userId })
                         : addAssignee.mutate({ taskId: task.id, userId: m.userId }))
                     }
-                    className={`flex items-center gap-2 rounded-full px-2.5 py-1 text-xs transition-all ${isAssigned ? "bg-primary/20 text-primary ring-1 ring-primary/40" : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"} ${!editable ? "cursor-default" : ""}`}
+                    className={`flex items-center gap-2 rounded-full px-2.5 py-1 text-xs transition-colors ${isAssigned ? "bg-primary/20 text-primary ring-1 ring-primary/40" : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"} ${!editable ? "cursor-default" : ""}`}
                   >
                     <Avatar className="h-4 w-4">
                       <AvatarFallback className="text-[8px]" style={{ backgroundColor: m.avatarColor + "33", color: m.avatarColor }}>
@@ -251,7 +265,7 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
                         ? removeTaskLabel.mutate({ taskId: task.id, labelId: label.id })
                         : addTaskLabel.mutate({ taskId: task.id, labelId: label.id }))
                     }
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold transition-all ${!editable ? "cursor-default" : ""}`}
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors ${!editable ? "cursor-default" : ""}`}
                     style={{
                       backgroundColor: isApplied ? label.color + "30" : label.color + "15",
                       color: label.color,
@@ -305,7 +319,7 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
             ) : (
               <div
                 onClick={() => editable && setEditingDesc(true)}
-                className={`min-h-[60px] rounded-md px-3 py-2 text-sm ${description ? "text-foreground" : "text-muted-foreground/60 italic"} ${editable ? "hover:bg-accent cursor-pointer" : ""} transition-colors`}
+                className={`min-h-[60px] rounded-md px-3 py-2 text-sm leading-relaxed ${description ? "text-foreground" : "text-muted-foreground/60 italic"} ${editable ? "hover:bg-accent cursor-pointer" : ""} transition-colors`}
               >
                 {description || (editable ? "Click to add a description…" : "No description")}
               </div>
@@ -335,7 +349,7 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
           {/* Attachments */}
           <AttachmentSection taskId={task.id} myRole={myRole} />
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

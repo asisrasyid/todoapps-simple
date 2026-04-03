@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { ShieldCheck, CheckCircle, XCircle, Clock, Loader2, ChevronRight } from "lucide-react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Button } from "@/components/ui/button";
@@ -45,36 +46,87 @@ export default function ApprovalsPage() {
     }
   }
 
+  const [filter, setFilter] = useState<"pending" | "all">("pending");
+  const [sort, setSort] = useState<"newest" | "oldest">("newest");
   const pending = approvals?.filter((a) => a.status === "pending") ?? [];
+  const filtered = filter === "pending" ? pending : (approvals ?? []);
+  const displayed = [...filtered].sort((a, b) => {
+    const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return sort === "newest" ? diff : -diff;
+  });
+
+  const filterActions = (
+    <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
+        {(["pending", "all"] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`text-xs px-2.5 py-1 rounded-md transition-colors ${filter === f ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+          >
+            {f === "pending" ? `Pending${pending.length > 0 ? ` (${pending.length})` : ""}` : "Semua"}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-1 border-l border-border pl-2">
+        {(["newest", "oldest"] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setSort(s)}
+            className={`text-xs px-2.5 py-1 rounded-md transition-colors ${sort === s ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+          >
+            {s === "newest" ? "Terbaru" : "Terlama"}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <>
-      <Topbar title="Approvals" />
+      <Topbar title="Approvals" actions={filterActions} />
       <div className="flex-1 overflow-y-auto p-6">
         {isLoading ? (
           <div className="flex h-64 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : pending.length === 0 ? (
-          <div className="flex h-64 flex-col items-center justify-center gap-3 text-muted-foreground">
-            <CheckCircle className="h-12 w-12 opacity-30" />
-            <p className="text-sm">No pending approvals. All caught up!</p>
+        ) : displayed.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-center px-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-green-500/10">
+              <CheckCircle className="h-8 w-8 text-green-500" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-foreground">Semua bersih!</p>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Tidak ada permintaan approval yang menunggu. Semua task sudah diproses.
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="space-y-3 max-w-2xl mx-auto">
+          <motion.div
+            className="space-y-3 max-w-2xl mx-auto"
+            initial="hidden"
+            animate="visible"
+            variants={{ visible: { transition: { staggerChildren: 0.07 } } }}
+          >
             <p className="text-sm text-muted-foreground mb-4">
-              {pending.length} pending approval{pending.length !== 1 ? "s" : ""}
+              {displayed.length} approval{displayed.length !== 1 ? "s" : ""}
             </p>
-            {pending.map((approval) => (
-              <ApprovalCard
+            {displayed.map((approval) => (
+              <motion.div
                 key={approval.id}
-                approval={approval}
-                onApprove={() => handleApprove(approval)}
-                onReject={() => setRejectModal(approval)}
-                approving={approveTask.isPending}
-              />
+                variants={{ hidden: { opacity: 0, x: 20 }, visible: { opacity: 1, x: 0 } }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <ApprovalCard
+                  approval={approval}
+                  onApprove={() => handleApprove(approval)}
+                  onReject={() => setRejectModal(approval)}
+                  approving={approveTask.isPending}
+                />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
 
@@ -127,7 +179,7 @@ function ApprovalCard({
   approving: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+    <div className="rounded-2xl border-2 border-border bg-card p-4 space-y-3 shadow-toon hover:shadow-toon-primary transition-shadow duration-150">
       <div className="flex items-start gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/15">
           <Clock className="h-4 w-4 text-amber-400" />

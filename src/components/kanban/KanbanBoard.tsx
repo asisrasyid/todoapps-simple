@@ -1,5 +1,6 @@
 "use client";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { AnimatePresence } from "framer-motion";
 import {
   DndContext,
   DragOverlay,
@@ -17,9 +18,10 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { createPortal } from "react-dom";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Plus, Loader2 } from "lucide-react";
 import { BoardData, Task, Column, Role } from "@/types";
-import { canManageColumns, canEdit, canApprove, COLUMN_COLORS } from "@/lib/utils";
+import { canManageColumns, canEdit, canApprove, COLUMN_COLORS, cn } from "@/lib/utils";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
 import { TaskModal } from "@/components/task/TaskModal";
@@ -46,6 +48,9 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
   const setBoardData = useBoardStore((s) => s.setBoardData);
   const moveTaskOptimistic = useBoardStore((s) => s.moveTaskOptimistic);
   const reorderColumnsFn = useBoardStore((s) => s.reorderColumns);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const createTask = useCreateTask(board.id);
   const moveTask = useMoveTask(board.id);
@@ -56,7 +61,30 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [activeColumn, setActiveColumn] = useState<Column | null>(null);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [activeColIndex, setActiveColIndex] = useState(0);
+
+  // Deep link: open task from URL ?task={taskId}
+  const allTasks = tasks;
+  const taskIdFromUrl = searchParams.get("task");
+  const selectedTask = useMemo(
+    () => (taskIdFromUrl ? allTasks.find((t) => t.id === taskIdFromUrl) ?? null : null),
+    [taskIdFromUrl, allTasks]
+  );
+
+  function openTask(task: Task) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("task", task.id);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  function closeTask() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("task");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+  const boardScrollRef = useRef<HTMLDivElement>(null);
+  const columnRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [approvalPending, setApprovalPending] = useState<{
     task: Task;
     toColumn: Column;
@@ -231,8 +259,69 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
     }
   }
 
+  function scrollToColumn(index: number) {
+    const col = sortedColumns[index];
+    if (!col) return;
+    const el = columnRefs.current.get(col.id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+    }
+    setActiveColIndex(index);
+  }
+
+  // Sync active tab on scroll (mobile)
+  useEffect(() => {
+    const container = boardScrollRef.current;
+    if (!container) return;
+    function handleScroll() {
+      if (!container) return;
+      const containerLeft = container.getBoundingClientRect().left;
+      let closestIdx = 0;
+      let closestDist = Infinity;
+      sortedColumns.forEach((col, i) => {
+        const el = columnRefs.current.get(col.id);
+        if (!el) return;
+        const dist = Math.abs(el.getBoundingClientRect().left - containerLeft);
+        if (dist < closestDist) { closestDist = dist; closestIdx = i; }
+      });
+      setActiveColIndex(closestIdx);
+    }
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [sortedColumns]);
+
   return (
     <>
+      {/* Mobile column tab bar */}
+      {sortedColumns.length > 1 && (
+        <div className="md:hidden flex items-center gap-1.5 overflow-x-auto px-4 py-2 border-b border-border bg-card shrink-0 kanban-scroll">
+          {sortedColumns.map((col, i) => {
+            const taskCount = getTasksForColumn(col.id).length;
+            return (
+              <button
+                key={col.id}
+                onClick={() => scrollToColumn(i)}
+                className={cn(
+                  "flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                  activeColIndex === i
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                )}
+              >
+                <span
+                  className="h-2 w-2 rounded-full shrink-0"
+                  style={{ backgroundColor: col.color }}
+                />
+                {col.name}
+                <span className="rounded-full bg-muted px-1 text-xs font-semibold">
+                  {taskCount}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -240,24 +329,32 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
       >
-        <div className="flex h-full gap-3 overflow-x-auto px-6 py-4 kanban-scroll">
+        <div ref={boardScrollRef} className="flex h-full gap-3 overflow-x-auto px-6 py-4 kanban-scroll">
           <SortableContext
             items={sortedColumns.map((c) => `col:${c.id}`)}
             strategy={horizontalListSortingStrategy}
           >
             {sortedColumns.map((col) => (
-              <KanbanColumn
+              <div
                 key={col.id}
-                column={col}
-                tasks={getTasksForColumn(col.id)}
-                myRole={myRole}
-                onTaskClick={(task) => setSelectedTask(task)}
-                onAddTask={handleAddTask}
-                onRenameColumn={handleRenameColumn}
-                onDeleteColumn={handleDeleteColumn}
-                onToggleApproval={handleToggleApproval}
-                onColorChange={handleColorChange}
-              />
+                ref={(el) => {
+                  if (el) columnRefs.current.set(col.id, el);
+                  else columnRefs.current.delete(col.id);
+                }}
+                className="flex h-full"
+              >
+                <KanbanColumn
+                  column={col}
+                  tasks={getTasksForColumn(col.id)}
+                  myRole={myRole}
+                  onTaskClick={(task) => openTask(task)}
+                  onAddTask={handleAddTask}
+                  onRenameColumn={handleRenameColumn}
+                  onDeleteColumn={handleDeleteColumn}
+                  onToggleApproval={handleToggleApproval}
+                  onColorChange={handleColorChange}
+                />
+              </div>
             ))}
           </SortableContext>
 
@@ -297,7 +394,7 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
               ) : (
                 <button
                   onClick={() => setAddingColumn(true)}
-                  className="flex w-full items-center gap-2 rounded-xl border border-dashed border-border/60 px-4 py-3 text-sm text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"
+                  className="flex w-full items-center gap-2 rounded-xl border border-dashed border-border/60 px-4 py-3 text-sm text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-colors"
                 >
                   <Plus className="h-4 w-4" />
                   Add column
@@ -323,17 +420,42 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
           )}
       </DndContext>
 
-      {/* Task detail modal */}
-      {selectedTask && (
-        <TaskModal
-          task={tasks.find((t) => t.id === selectedTask.id) || selectedTask}
-          boardId={board.id}
-          myRole={myRole}
-          members={members}
-          labels={labels}
-          onClose={() => setSelectedTask(null)}
-        />
+      {/* Mobile column position indicator */}
+      {sortedColumns.length > 1 && (
+        <div className="md:hidden flex items-center justify-center gap-1.5 py-2 shrink-0 border-t border-border/50">
+          {sortedColumns.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => scrollToColumn(i)}
+              aria-label={`Go to column ${i + 1}`}
+              className={cn(
+                "rounded-full transition-all",
+                i === activeColIndex
+                  ? "h-2 w-4 bg-primary"
+                  : "h-2 w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+              )}
+            />
+          ))}
+          <span className="ml-2 text-xs text-muted-foreground">
+            {activeColIndex + 1}/{sortedColumns.length}
+          </span>
+        </div>
       )}
+
+      {/* Task detail modal */}
+      <AnimatePresence>
+        {selectedTask && (
+          <TaskModal
+            key={selectedTask.id}
+            task={allTasks.find((t) => t.id === selectedTask.id) || selectedTask}
+            boardId={board.id}
+            myRole={myRole}
+            members={members}
+            labels={labels}
+            onClose={closeTask}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Approval request modal */}
       {approvalPending && (

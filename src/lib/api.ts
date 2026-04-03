@@ -3,6 +3,8 @@ import { ApiResponse, Attachment, Board, BoardData, BoardMember, Approval, User 
 // Replace this with your deployed Google Apps Script Web App URL
 const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL || "";
 
+const API_TIMEOUT_MS = 15000;
+
 async function callAPI<T>(
   action: string,
   params: Record<string, unknown> = {},
@@ -11,16 +13,29 @@ async function callAPI<T>(
   const body: Record<string, unknown> = { action, ...params };
   if (token) body.token = token;
 
-  const res = await fetch(APPS_SCRIPT_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
-  if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
-  const data: ApiResponse<T> = await res.json();
-  if (!data.success) throw new Error(data.error || "API error");
-  return data.data as T;
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+    const data: ApiResponse<T> = await res.json();
+    if (!data.success) throw new Error(data.error || "API error");
+    return data.data as T;
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Koneksi ke server timeout. Coba lagi.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function getToken(): string {

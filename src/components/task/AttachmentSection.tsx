@@ -11,6 +11,8 @@ import {
   Image as ImageIcon,
   Loader2,
   ExternalLink,
+  Download,
+  ZoomIn,
 } from "lucide-react";
 import { Attachment, Role } from "@/types";
 import { canEdit } from "@/lib/utils";
@@ -18,6 +20,7 @@ import { getDriveUrls, ACCEPTED_ATTACHMENT_TYPES, MAX_ATTACHMENT_SIZE } from "@/
 import { useTaskAttachments, useAttachmentMutations } from "@/hooks/useBoard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface AttachmentSectionProps {
   taskId: string;
@@ -45,11 +48,19 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// Color accent per file type — consistent with palette
+const CATEGORY_ACCENT: Record<string, string> = {
+  image:  "hsl(var(--secondary))",          // steel blue for images
+  pdf:    "hsl(0 78% 58%)",                  // red for PDF
+  text:   "hsl(var(--primary))",             // amber for text/code
+  other:  "hsl(var(--muted-foreground))",
+};
+
 function FileIcon({ mimeType, className }: { mimeType: string; className?: string }) {
   const category = getFileCategory(mimeType);
   if (category === "image") return <ImageIcon className={className} />;
-  if (category === "pdf") return <FileText className={className} />;
-  if (category === "text") return <FileCode className={className} />;
+  if (category === "pdf")   return <FileText  className={className} />;
+  if (category === "text")  return <FileCode  className={className} />;
   return <File className={className} />;
 }
 
@@ -62,66 +73,126 @@ function PreviewModal({
   attachment: Attachment;
   onClose: () => void;
 }) {
-  const urls = getDriveUrls(attachment.fileId);
+  const urls     = getDriveUrls(attachment.fileId);
   const category = getFileCategory(attachment.mimeType);
+  const accent   = CATEGORY_ACCENT[category];
+
+  // Close on Escape key
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") onClose();
+  };
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ backdropFilter: "blur(4px)" }}
+    // Outer container — captures focus for keyboard
+    <motion.div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      onKeyDown={handleKey}
+      tabIndex={-1}
     >
-      {/* Backdrop — full screen */}
-      <div
-        className="absolute inset-0 bg-black/85"
+      {/* ── Backdrop ── */}
+      <motion.div
+        className="absolute inset-0 backdrop-blur-xl bg-background/10"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="relative z-10 flex flex-col w-full h-full max-w-[92vw] max-h-[92vh] rounded-xl bg-card shadow-2xl overflow-hidden border border-border/50">
-        {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border bg-card shrink-0">
-          <FileIcon mimeType={attachment.mimeType} className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span className="flex-1 text-sm font-medium truncate">{attachment.fileName}</span>
-          <a
-            href={urls.download}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
+      {/* ── Modal panel ── */}
+      <motion.div
+        className="relative z-10 flex flex-col w-full max-w-4xl rounded-2xl bg-card border-2 border-border overflow-hidden"
+        style={{
+          maxHeight: "85vh",
+          boxShadow: `5px 5px 0px 0px ${accent}50`,
+        }}
+        initial={{ opacity: 0, scale: 0.88, y: 24 }}
+        animate={{ opacity: 1, scale: 1,    y: 0  }}
+        exit={{    opacity: 0, scale: 0.94,  y: 12 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ── Accent bar (file-type color) ── */}
+        <div className="h-1.5 shrink-0" style={{ background: `linear-gradient(90deg, ${accent}, ${accent}80)` }} />
+
+        {/* ── Header ── */}
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-border bg-card shrink-0">
+          {/* File-type icon badge */}
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2"
+            style={{
+              borderColor: `${accent}50`,
+              backgroundColor: `${accent}18`,
+              color: accent,
+            }}
           >
-            <ExternalLink className="h-3.5 w-3.5" />
-            Download
-          </a>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
-          >
-            <X className="h-4 w-4" />
-          </button>
+            <FileIcon mimeType={attachment.mimeType} className="h-5 w-5" />
+          </div>
+
+          {/* File info */}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold leading-tight truncate">{attachment.fileName}</p>
+            <p className="text-xs text-muted-foreground capitalize mt-0.5">
+              {category} · {formatBytes(attachment.fileSize)}
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={urls.download}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-xl border-2 border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/60 hover:text-primary hover:bg-primary/8 shadow-toon-sm transition-[color,border-color,background-color]"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download
+            </a>
+            <motion.button
+              onClick={onClose}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.94 }}
+              aria-label="Close preview"
+              className="rounded-xl border-2 border-border p-2 text-muted-foreground hover:border-destructive/50 hover:text-destructive hover:bg-destructive/8 shadow-toon-sm transition-[color,border-color,background-color]"
+            >
+              <X className="h-4 w-4" />
+            </motion.button>
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-hidden bg-black/30 min-h-0">
+        {/* ── Content area ── */}
+        <div className="flex-1 overflow-hidden bg-muted/20 min-h-0">
           {category === "image" ? (
-            <div className="flex h-full w-full items-center justify-center p-6">
+            <motion.div
+              className="flex h-full w-full items-center justify-center p-6"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={urls.image}
                 alt={attachment.fileName}
-                className="max-h-full max-w-full object-contain rounded-lg shadow-lg"
+                className="max-h-full max-w-full object-contain rounded-xl"
+                style={{ boxShadow: `0 8px 32px hsl(var(--toon-shadow-base) / 0.4)` }}
               />
-            </div>
+            </motion.div>
           ) : (
             <iframe
               src={urls.preview}
               className="w-full h-full"
-              style={{ minHeight: 0 }}
+              style={{ minHeight: "400px" }}
               title={attachment.fileName}
               sandbox="allow-scripts allow-same-origin allow-popups"
             />
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -140,16 +211,27 @@ function AttachmentCard({
   onDelete: () => void;
   deleting: boolean;
 }) {
-  const urls = getDriveUrls(attachment.fileId);
+  const urls     = getDriveUrls(attachment.fileId);
   const category = getFileCategory(attachment.mimeType);
+  const accent   = CATEGORY_ACCENT[category];
 
   return (
-    <div className="group relative flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5 hover:bg-accent/50 transition-colors">
+    <motion.div
+      className="group relative flex items-center gap-3 rounded-xl border-2 border-border bg-card px-3 py-2.5 cursor-pointer"
+      whileHover={{ y: -2, boxShadow: `3px 3px 0px 0px ${accent}40` }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.15 }}
+      onClick={onPreview}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPreview(); } }}
+      aria-label={`Preview ${attachment.fileName}`}
+    >
       {/* Thumbnail / Icon */}
-      <button
-        onClick={onPreview}
-        className="shrink-0 flex items-center justify-center w-10 h-10 rounded-md overflow-hidden bg-background border border-border"
-        title="Preview"
+      <div
+        className="shrink-0 flex items-center justify-center w-10 h-10 rounded-xl border-2 overflow-hidden"
+        style={{ borderColor: `${accent}40`, backgroundColor: `${accent}12` }}
+        onClick={(e) => { e.stopPropagation(); onPreview(); }}
       >
         {category === "image" ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -162,33 +244,40 @@ function AttachmentCard({
             }}
           />
         ) : (
-          <FileIcon mimeType={attachment.mimeType} className="h-5 w-5 text-muted-foreground" />
+          <FileIcon mimeType={attachment.mimeType} className="h-5 w-5" />
         )}
-      </button>
+      </div>
 
       {/* Info */}
-      <button onClick={onPreview} className="flex-1 min-w-0 text-left">
+      <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate leading-tight">{attachment.fileName}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{formatBytes(attachment.fileSize)}</p>
-      </button>
+        <p className="text-xs text-muted-foreground mt-0.5 capitalize">{category} · {formatBytes(attachment.fileSize)}</p>
+      </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-1 shrink-0">
+      {/* Hover hint */}
+      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" />
+      </div>
+
+      {/* Actions — always show, separated */}
+      <div
+        className="flex items-center gap-1 shrink-0 ml-1"
+        onClick={(e) => e.stopPropagation()}
+      >
         <a
           href={urls.download}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent opacity-0 group-hover:opacity-100 transition-all"
+          className="rounded-lg p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
           title="Download"
         >
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
         {editable && (
           <button
-            onClick={onDelete}
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
             disabled={deleting}
-            className="rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+            className="rounded-lg p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40"
             title="Hapus lampiran"
           >
             {deleting ? (
@@ -199,16 +288,16 @@ function AttachmentCard({
           </button>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function AttachmentSection({ taskId, myRole }: AttachmentSectionProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [previewing, setPreviewing] = useState<Attachment | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const fileInputRef  = useRef<HTMLInputElement>(null);
+  const [previewing, setPreviewing]   = useState<Attachment | null>(null);
+  const [deletingId, setDeletingId]   = useState<string | null>(null);
 
   const { data: attachments = [], isLoading } = useTaskAttachments(taskId);
   const { upload, remove } = useAttachmentMutations(taskId);
@@ -252,21 +341,30 @@ export function AttachmentSection({ taskId, myRole }: AttachmentSectionProps) {
   return (
     <>
       <div className="space-y-3">
+        {/* Section header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <Paperclip className="h-4 w-4" />
             <span>Lampiran</span>
-            {attachments.length > 0 && (
-              <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-semibold text-foreground">
-                {attachments.length}
-              </span>
-            )}
+            <AnimatePresence>
+              {attachments.length > 0 && (
+                <motion.span
+                  key="count"
+                  initial={{ opacity: 0, scale: 0.6 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.6 }}
+                  className="rounded-full bg-primary/15 px-1.5 py-0.5 text-xs font-bold text-primary"
+                >
+                  {attachments.length}
+                </motion.span>
+              )}
+            </AnimatePresence>
           </div>
           {editable && (
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 gap-1.5 text-xs"
+              className="h-7 gap-1.5 text-xs rounded-lg"
               onClick={() => fileInputRef.current?.click()}
               disabled={upload.isPending}
             >
@@ -280,39 +378,51 @@ export function AttachmentSection({ taskId, myRole }: AttachmentSectionProps) {
           )}
         </div>
 
+        {/* Body */}
         {isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-3">
             <Loader2 className="h-4 w-4 animate-spin" />
             Memuat lampiran…
           </div>
         ) : attachments.length === 0 ? (
           editable ? (
-            <button
+            <motion.button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full rounded-lg border border-dashed border-border py-6 text-sm text-muted-foreground hover:border-primary/40 hover:text-primary/70 transition-colors"
+              whileHover={{ borderColor: "hsl(var(--primary) / 0.5)", y: -1 }}
+              whileTap={{ scale: 0.99 }}
+              transition={{ duration: 0.15 }}
+              className="w-full rounded-2xl border-2 border-dashed border-border py-8 text-sm text-muted-foreground transition-colors"
             >
-              <Upload className="mx-auto mb-1.5 h-5 w-5 opacity-50" />
-              Klik untuk upload lampiran
-              <span className="block text-xs mt-1 opacity-60">
-                Gambar, PDF, Office, .txt, .md, .sql — maks 4MB
-              </span>
-            </button>
+              <Upload className="mx-auto mb-2 h-6 w-6 opacity-40" />
+              <p className="font-medium">Klik untuk upload lampiran</p>
+              <p className="text-xs mt-1 opacity-60">Gambar, PDF, Office, .txt, .md, .sql — maks 4MB</p>
+            </motion.button>
           ) : (
             <p className="text-sm text-muted-foreground/60 italic">Tidak ada lampiran</p>
           )
         ) : (
-          <div className="space-y-2">
+          <motion.div
+            className="space-y-2"
+            initial="hidden"
+            animate="visible"
+            variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
+          >
             {attachments.map((att) => (
-              <AttachmentCard
+              <motion.div
                 key={att.id}
-                attachment={att}
-                editable={editable}
-                onPreview={() => setPreviewing(att)}
-                onDelete={() => handleDelete(att)}
-                deleting={deletingId === att.id}
-              />
+                variants={{ hidden: { opacity: 0, x: -8 }, visible: { opacity: 1, x: 0 } }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <AttachmentCard
+                  attachment={att}
+                  editable={editable}
+                  onPreview={() => setPreviewing(att)}
+                  onDelete={() => handleDelete(att)}
+                  deleting={deletingId === att.id}
+                />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         <input
@@ -325,9 +435,16 @@ export function AttachmentSection({ taskId, myRole }: AttachmentSectionProps) {
         />
       </div>
 
-      {previewing && (
-        <PreviewModal attachment={previewing} onClose={() => setPreviewing(null)} />
-      )}
+      {/* Preview modal with AnimatePresence for enter/exit */}
+      <AnimatePresence>
+        {previewing && (
+          <PreviewModal
+            key={previewing.id}
+            attachment={previewing}
+            onClose={() => setPreviewing(null)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

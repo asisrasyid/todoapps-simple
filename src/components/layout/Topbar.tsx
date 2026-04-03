@@ -4,7 +4,7 @@ import { Menu } from "lucide-react";
 import { useSidebar } from "@/components/SidebarProvider";
 
 interface TopbarProps {
-  title: string;
+  title: ReactNode;
   actions?: ReactNode;
 }
 

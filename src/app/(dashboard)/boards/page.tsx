@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, LayoutGrid, Loader2, Trash2, MoreHorizontal, Edit } from "lucide-react";
+import { Plus, LayoutGrid, Loader2, Trash2, MoreHorizontal, ExternalLink } from "lucide-react";
+import { motion } from "framer-motion";
 import { Topbar } from "@/components/layout/Topbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,10 +24,12 @@ import { useBoards, useCreateBoard, useDeleteBoard } from "@/hooks/useBoards";
 import { Board } from "@/types";
 import { ROLE_CONFIG } from "@/lib/utils";
 import { toast } from "@/components/ui/toaster";
+import { BoardSkeleton } from "@/components/skeletons/BoardSkeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 export default function BoardsPage() {
   const router = useRouter();
-  const { data: boards, isLoading } = useBoards();
+  const { data: boards, isLoading, isError, refetch } = useBoards();
   const createBoard = useCreateBoard();
   const deleteBoard = useDeleteBoard();
 
@@ -72,37 +75,59 @@ export default function BoardsPage() {
 
       <div className="flex-1 overflow-y-auto p-6">
         {isLoading ? (
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <BoardSkeleton />
+        ) : isError ? (
+          <ErrorState
+            title="Gagal memuat boards"
+            message="Tidak dapat terhubung ke server. Periksa koneksi internet Anda."
+            onRetry={() => refetch()}
+          />
         ) : !boards?.length ? (
-          <div className="flex h-64 flex-col items-center justify-center gap-3 text-muted-foreground">
-            <LayoutGrid className="h-12 w-12 opacity-30" />
-            <p className="text-sm">No boards yet. Create your first board!</p>
-            <Button size="sm" onClick={() => setShowCreate(true)}>
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-center px-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+              <LayoutGrid className="h-8 w-8 text-primary" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-foreground">Belum ada board</p>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Board adalah ruang kerja untuk mengorganisir task Anda. Buat board pertama untuk memulai.
+              </p>
+            </div>
+            <Button onClick={() => setShowCreate(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              New Board
+              Buat Board Pertama
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <motion.div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+            initial="hidden"
+            animate="visible"
+            variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
+          >
             {boards.map((board) => (
-              <BoardCard
+              <motion.div
                 key={board.id}
-                board={board}
-                onClick={() => router.push(`/boards/${board.id}`)}
-                onDelete={(e) => handleDelete(board.id, e)}
-              />
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <BoardCard
+                  board={board}
+                  onClick={() => router.push(`/boards/${board.id}`)}
+                  onDelete={(e) => handleDelete(board.id, e)}
+                />
+              </motion.div>
             ))}
-            {/* New board button card */}
-            <button
+            <motion.button
+              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               onClick={() => setShowCreate(true)}
-              className="flex h-36 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"
+              className="flex h-36 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-[border-color,color,background-color]"
             >
               <Plus className="h-6 w-6" />
               <span className="text-sm font-medium">New Board</span>
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         )}
       </div>
 
@@ -114,12 +139,17 @@ export default function BoardsPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Board Name</label>
+              <label htmlFor="board-name" className="text-sm font-medium">
+                Board Name <span className="text-destructive" aria-hidden="true">*</span>
+              </label>
               <Input
+                id="board-name"
                 placeholder="e.g. Product Roadmap"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoFocus
+                required
+                aria-required="true"
                 onKeyDown={(e) => e.key === "Enter" && handleCreate()}
               />
             </div>
@@ -157,16 +187,20 @@ function BoardCard({
   onClick: () => void;
   onDelete: (e: React.MouseEvent) => void;
 }) {
-  const colors = ["#6366f1", "#8b5cf6", "#ec4899", "#3b82f6", "#10b981", "#f59e0b"];
+  const colors = ["#FAB95B", "#547792", "#1A3263", "#E8924A", "#3a7cbf", "#6e9ea8"];
   const color = colors[board.id.charCodeAt(0) % colors.length];
 
   return (
-    <div
+    <motion.div
       onClick={onClick}
-      className="group relative flex h-36 cursor-pointer flex-col justify-between overflow-hidden rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5"
+      whileHover={{ y: -4 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.15 }}
+      className="group relative flex h-40 cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border-2 border-border bg-card p-4"
+      style={{ boxShadow: `3px 3px 0px 0px ${color}40` }}
     >
       {/* Color accent top */}
-      <div className="absolute inset-x-0 top-0 h-1 rounded-t-xl" style={{ backgroundColor: color }} />
+      <div className="absolute inset-x-0 top-0 h-1.5 rounded-t-2xl" style={{ backgroundColor: color }} />
 
       <div className="pt-2">
         <p className="font-semibold leading-tight line-clamp-1">{board.name}</p>
@@ -177,7 +211,7 @@ function BoardCard({
 
       <div className="flex items-center justify-between">
         <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+          className="rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide"
           style={{ backgroundColor: color + "20", color }}
         >
           {ROLE_CONFIG[board.myRole].label}
@@ -191,7 +225,7 @@ function BoardCard({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onClick(); }}>
-              <Edit className="mr-2 h-4 w-4" />
+              <ExternalLink className="mr-2 h-4 w-4" />
               Open Board
             </DropdownMenuItem>
             {board.myRole === "owner" && (
@@ -206,6 +240,6 @@ function BoardCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </div>
+    </motion.div>
   );
 }

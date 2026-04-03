@@ -53,6 +53,7 @@ export function ColumnHeader({
       {canManageColumns(myRole) && dragHandleProps && (
         <div
           {...(dragHandleProps as React.HTMLAttributes<HTMLDivElement>)}
+          aria-label={`Drag to reorder ${column.name} column`}
           className="cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors"
         >
           <GripVertical className="h-4 w-4" />
@@ -83,7 +84,7 @@ export function ColumnHeader({
         />
       ) : (
         <button
-          className="flex-1 text-left text-sm font-semibold text-foreground hover:text-primary transition-colors truncate"
+          className={`flex-1 text-left text-sm font-semibold text-foreground transition-colors truncate ${canManageColumns(myRole) ? "hover:text-primary cursor-text border-b border-dashed border-transparent hover:border-primary/40" : ""}`}
           onDoubleClick={() => canManageColumns(myRole) && setEditing(true)}
           title={canManageColumns(myRole) ? "Double-click to rename" : column.name}
         >
@@ -92,7 +93,7 @@ export function ColumnHeader({
       )}
 
       {/* Count */}
-      <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground min-w-[18px] text-center">
+      <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-semibold text-muted-foreground min-w-[18px] text-center">
         {taskCount}
       </span>
 
@@ -105,7 +106,7 @@ export function ColumnHeader({
       {canManageColumns(myRole) && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+            <button aria-label={`Column options for ${column.name}`} className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </DropdownMenuTrigger>

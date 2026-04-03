@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { format, isValid, parseISO } from "date-fns";
 import { Priority, Role } from "@/types";
 
 export function cn(...inputs: ClassValue[]) {
@@ -41,9 +42,9 @@ export const PRIORITY_CONFIG: Record<
 };
 
 export const ROLE_CONFIG: Record<Role, { label: string; color: string }> = {
-  owner: { label: "Owner", color: "text-purple-400" },
-  approver: { label: "Approver", color: "text-blue-400" },
-  contributor: { label: "Contributor", color: "text-green-400" },
+  owner: { label: "Owner", color: "text-amber-400" },
+  approver: { label: "Approver", color: "text-sky-400" },
+  contributor: { label: "Contributor", color: "text-emerald-400" },
   viewer: { label: "Viewer", color: "text-slate-400" },
 };
 
@@ -74,8 +75,9 @@ export const LABEL_COLORS = [
 export function formatDate(dateStr: string | null): string {
   if (!dateStr) return "";
   try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+    const d = parseISO(dateStr);
+    if (!isValid(d)) return dateStr;
+    return format(d, "d MMM");
   } catch {
     return dateStr;
   }
@@ -83,7 +85,11 @@ export function formatDate(dateStr: string | null): string {
 
 export function isOverdue(dateStr: string | null): boolean {
   if (!dateStr) return false;
-  return new Date(dateStr) < new Date();
+  try {
+    return parseISO(dateStr) < new Date();
+  } catch {
+    return false;
+  }
 }
 
 export function canEdit(role: Role): boolean {

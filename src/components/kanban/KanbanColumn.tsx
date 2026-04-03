@@ -81,7 +81,7 @@ export function KanbanColumn({
       ref={setSortableRef}
       style={style}
       className={cn(
-        "flex h-full w-80 shrink-0 flex-col rounded-xl border border-border bg-card/50 transition-all duration-150",
+        "flex h-full w-80 shrink-0 flex-col rounded-xl border border-border bg-card/50 transition-[opacity,box-shadow,background-color] duration-150",
         isColumnDragging && "opacity-30 ring-2 ring-primary/40",
         isOver && "ring-2 ring-primary/60 bg-primary/5"
       )}
@@ -120,11 +120,26 @@ export function KanbanColumn({
         {tasks.length === 0 && (
           <div
             className={cn(
-              "flex h-20 items-center justify-center rounded-lg border border-dashed border-border/50 text-xs text-muted-foreground/40 transition-colors",
-              isOver && "border-primary/50 text-primary/60 bg-primary/5"
+              "flex flex-col items-center justify-center rounded-lg border border-dashed border-border/50 gap-2 transition-colors py-6",
+              isOver ? "border-primary/50 text-primary/60 bg-primary/5" : "text-muted-foreground/40"
             )}
           >
-            Drop tasks here
+            {isOver ? (
+              <p className="text-xs font-medium text-primary/60">Lepas di sini</p>
+            ) : (
+              <>
+                <p className="text-xs">Belum ada task di kolom ini</p>
+                {canEdit(myRole) && (
+                  <button
+                    onClick={() => setAddingTask(true)}
+                    className="flex items-center gap-1.5 rounded-md border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Tambah Task
+                  </button>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

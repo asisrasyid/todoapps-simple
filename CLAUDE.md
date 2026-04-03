@@ -1,5 +1,20 @@
 # SheetMaster App — Project Context
 
+## MANDATORY: Cek Task Aktif Sebelum Mulai
+**Setiap agen WAJIB membaca task backlog UI/UX sebelum memulai kerja apapun di sesi baru.**
+
+Lokasi: `C:/Users/m.aziz/.claude/projects/D--LEARN-AND-DEV-Todo-apps-sheetmaster-app/memory/tasks.md`
+
+Langkah wajib di awal sesi:
+1. Baca `tasks.md` — cari sesi/task dengan status `[ ]` (belum) atau `[~]` (in-progress)
+2. Jika ada task in-progress `[~]`, **lanjutkan task itu dulu** sebelum mengambil task baru
+3. Jika user minta pekerjaan baru tapi ada task belum selesai, **informasikan dulu** ke user
+4. Setelah menyelesaikan task, update status di `tasks.md`: `[ ]` → `[x]` dan update kolom "Selesai" di tabel Progress Tracking
+
+Ini **tidak opsional**. Agen yang tidak mengecek tasks.md dianggap tidak mengikuti konteks project.
+
+---
+
 ## MANDATORY: Changelog Update
 **Setiap agen WAJIB mengupdate changelog setelah menyelesaikan pekerjaan apapun.**
 

@@ -2,83 +2,189 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  /* Dark mode (default) */
-  :root,
-  .dark {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-    --card: 224 71% 6%;
-    --card-foreground: 213 31% 91%;
-    --popover: 224 71% 6%;
-    --popover-foreground: 213 31% 91%;
-    --primary: 263 70% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 222 47% 11%;
-    --secondary-foreground: 213 31% 91%;
-    --muted: 223 47% 11%;
-    --muted-foreground: 215 16% 57%;
-    --accent: 216 34% 17%;
-    --accent-foreground: 213 31% 91%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 213 31% 91%;
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-    --ring: 263 70% 60%;
-    --radius: 0.75rem;
-  }
-
-  /* Light mode */
-  .light {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 263 70% 50%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 94%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 94%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 90%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 86%;
-    --input: 214 32% 86%;
-    --ring: 263 70% 50%;
-    --radius: 0.75rem;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
+  /*
+   * Brand palette — 4 warna inti:
+   *   #1A3263  Deep Navy     HSL 220 58% 25%
+   *   #547792  Steel Blue    HSL 205 27% 45%
+   *   #FAB95B  Golden Amber  HSL  37 94% 67%
+   *   #E8E2DB  Warm Cream    HSL  33 20% 88%
+   *
+   * Kontras target (WCAG AA):
+   *   Normal text  ≥ 4.5:1
+   *   Large/bold   ≥ 3.0:1
+   *   UI icons     ≥ 3.0:1
+   */
+
+  /* ═══════════════════════════════════════════════
+     DARK MODE  (default — :root + .dark)
+     Bg  ≈ #0E1724  Fg  ≈ #E2DDD7  Ratio ≈ 12:1 ✓
+     Amber on bg        Ratio ≈  8:1 ✓
+     Muted on bg        Ratio ≈  5:1 ✓
+     ═══════════════════════════════════════════════ */
+  :root, .dark {
+    --background:          220 52%  9%;   /* #0E1724 deep navy bg          */
+    --foreground:           33 20% 88%;   /* #E2DDD7 warm cream text        */
+    --card:                220 48% 13%;   /* #121D30 navy card              */
+    --card-foreground:      33 20% 88%;
+    --popover:             220 48% 15%;
+    --popover-foreground:   33 20% 88%;
+
+    --primary:              37 94% 67%;   /* #FAB95B golden amber           */
+    --primary-foreground:  220 58% 10%;   /* #0B1526 dark navy on amber btn */
+
+    --secondary:           205 27% 45%;   /* #547792 steel blue             */
+    --secondary-foreground: 33 20% 92%;   /* cream on steel blue            */
+
+    --muted:               220 42% 17%;   /* slightly lighter navy          */
+    --muted-foreground:    205 22% 60%;   /* #7A9BB5 muted steel blue       */
+
+    --accent:              220 42% 21%;
+    --accent-foreground:    33 20% 88%;
+
+    --destructive:           0 78% 58%;   /* red — readable on navy         */
+    --destructive-foreground: 33 20% 95%;
+
+    --border:              220 38% 21%;
+    --input:               220 38% 21%;
+    --ring:                 37 94% 67%;   /* amber focus ring               */
+
+    /* Toon shadow base — very dark navy offset */
+    --toon-shadow-base:    220 55%  5%;
+    --radius: 1rem;
   }
+
+  /* ═══════════════════════════════════════════════
+     LIGHT MODE  (.light)
+     Bg  ≈ #EAE4DC  Fg  ≈ #172043  Ratio ≈ 9:1  ✓
+     Amber btn + navy txt  Ratio ≈ 5:1 ✓  (bold/large)
+     Muted on bg           Ratio ≈ 4.6:1 ✓
+     ═══════════════════════════════════════════════ */
+  .light {
+    --background:           33 18% 91%;   /* #EAE4DC warm cream bg          */
+    --foreground:          220 55% 16%;   /* #172043 deep navy text         */
+    --card:                  0  0% 100%;  /* pure white cards on cream bg   */
+    --card-foreground:     220 55% 16%;
+
+    --popover:               0  0% 100%;
+    --popover-foreground:  220 55% 16%;
+
+    --primary:              37 88% 52%;   /* #E0A030 deeper amber for contrast */
+    --primary-foreground:  220 58% 10%;   /* dark navy on amber             */
+
+    --secondary:           205 30% 36%;   /* #3F6A85 deeper steel blue      */
+    --secondary-foreground:  0  0% 100%;
+
+    --muted:                33 14% 84%;   /* #DDD6CC slightly darker cream  */
+    --muted-foreground:    220 30% 36%;   /* #3F527A navy-ish, readable     */
+
+    --accent:               33 14% 80%;   /* #D6CEBC hover bg               */
+    --accent-foreground:   220 55% 16%;
+
+    --destructive:           0 78% 50%;
+    --destructive-foreground: 0  0% 100%;
+
+    --border:              205 18% 70%;   /* #97ACBB blue-grey border       */
+    --input:               205 18% 70%;
+    --ring:                 37 88% 52%;   /* amber ring                     */
+
+    /* Toon shadow base — navy tint for cartoon pop */
+    --toon-shadow-base:    220 50% 22%;
+    --radius: 1rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
   ::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full;
+    background: hsl(var(--secondary) / 0.4);
+    border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/30;
+    background: hsl(var(--secondary) / 0.65);
   }
 }
 
 @layer utilities {
   .kanban-scroll {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) transparent;
+    scrollbar-color: hsl(var(--secondary) / 0.35) transparent;
   }
+
+  button, [role="button"], a, input, select, textarea, label {
+    touch-action: manipulation;
+  }
+
+  /* ── Toon shadows — adaptive per theme via --toon-shadow-base ──
+   *  Dark  mode: very dark navy offset → rich, deep, cartoon feel
+   *  Light mode: medium navy offset    → clear pop on cream bg
+   */
+  .shadow-toon {
+    box-shadow: 3px 3px 0px 0px hsl(var(--toon-shadow-base));
+  }
+  .shadow-toon-sm {
+    box-shadow: 2px 2px 0px 0px hsl(var(--toon-shadow-base));
+  }
+  .shadow-toon-primary {
+    box-shadow: 3px 3px 0px 0px hsl(var(--primary) / 0.50);
+  }
+  .shadow-toon-secondary {
+    box-shadow: 3px 3px 0px 0px hsl(var(--secondary) / 0.50);
+  }
+  .shadow-toon-hover {
+    box-shadow: 4px 4px 0px 0px hsl(var(--primary) / 0.60);
+  }
+
+  /* Standard depth shadows */
+  .shadow-card {
+    box-shadow: 0 1px 4px 0 hsl(var(--toon-shadow-base) / 0.25),
+                0 1px 2px -1px hsl(var(--toon-shadow-base) / 0.15);
+  }
+  .shadow-modal {
+    box-shadow: 0 8px 32px -4px hsl(var(--toon-shadow-base) / 0.50),
+                0 2px  8px -2px hsl(var(--toon-shadow-base) / 0.30);
+  }
+  .shadow-overlay {
+    box-shadow: 0 20px 48px -8px hsl(var(--toon-shadow-base) / 0.65),
+                0  4px 16px -4px hsl(var(--toon-shadow-base) / 0.40);
+  }
+
+  /* ── Toon gradients — adaptive ── */
+  .bg-toon-primary {
+    background: linear-gradient(135deg,
+      hsl(var(--primary)),
+      hsl(37 88% 52%));
+  }
+  .bg-toon-secondary {
+    background: linear-gradient(135deg,
+      hsl(var(--secondary)),
+      hsl(220 52% 28%));
+  }
+  .bg-toon-navy {
+    background: linear-gradient(135deg,
+      hsl(220 52% 20%),
+      hsl(220 58% 14%));
+  }
+
+  /* ── Type scale ── */
+  .text-caption  { @apply text-xs leading-tight; }
+  .text-label    { @apply text-xs font-medium leading-tight; }
+  .text-body-sm  { @apply text-sm leading-relaxed; }
+  .text-body     { @apply text-base leading-relaxed; }
 }

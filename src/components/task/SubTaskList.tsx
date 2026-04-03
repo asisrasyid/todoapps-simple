@@ -53,7 +53,7 @@ export function SubTaskList({
           </div>
           <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
             <div
-              className="h-full rounded-full bg-primary transition-all duration-300"
+              className="h-full rounded-full bg-primary transition-[width] duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -79,7 +79,8 @@ export function SubTaskList({
             {canEdit(myRole) && (
               <button
                 onClick={() => onDelete(st.id)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-destructive"
+                aria-label={`Delete subtask: ${st.title}`}
+                className="h-8 w-8 flex items-center justify-center rounded-md opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-destructive"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -114,7 +115,8 @@ export function SubTaskList({
               </button>
               <button
                 onClick={() => { setAdding(false); setTitle(""); }}
-                className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                aria-label="Cancel adding subtask"
+                className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               >
                 Cancel
               </button>

@@ -97,12 +97,12 @@ export default function SharePage({ params }: PageProps) {
                       <div key={task.id} className="rounded-lg border border-border bg-background p-3 space-y-2">
                         <p className="text-sm font-medium leading-snug">{task.title}</p>
                         <div className="flex items-center justify-between gap-2">
-                          <span className={cn("text-[10px] font-semibold rounded px-1.5 py-0.5 capitalize", PRIORITY_COLOR[task.priority] || PRIORITY_COLOR.medium)}>
+                          <span className={cn("text-xs font-semibold rounded px-1.5 py-0.5 capitalize", PRIORITY_COLOR[task.priority] || PRIORITY_COLOR.medium)}>
                             {task.priority}
                           </span>
                           <div className="flex items-center gap-1.5">
                             {task.deadline && (
-                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <Calendar className="h-3 w-3" />
                                 {new Date(task.deadline).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
                               </div>
