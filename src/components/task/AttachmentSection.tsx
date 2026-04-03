@@ -66,45 +66,55 @@ function PreviewModal({
   const category = getFileCategory(attachment.mimeType);
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center">
-      <div className="absolute inset-0 bg-black/80" onClick={onClose} />
-      <div className="relative z-10 flex flex-col w-full max-w-4xl max-h-[90vh] mx-4 rounded-xl bg-card shadow-2xl overflow-hidden">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ backdropFilter: "blur(4px)" }}
+    >
+      {/* Backdrop — full screen */}
+      <div
+        className="absolute inset-0 bg-black/85"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="relative z-10 flex flex-col w-full h-full max-w-[92vw] max-h-[92vh] rounded-xl bg-card shadow-2xl overflow-hidden border border-border/50">
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
+        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border bg-card shrink-0">
           <FileIcon mimeType={attachment.mimeType} className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="flex-1 text-sm font-medium truncate">{attachment.fileName}</span>
           <a
             href={urls.download}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             Download
           </a>
           <button
             onClick={onClose}
-            className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden bg-black/20">
+        <div className="flex-1 overflow-hidden bg-black/30 min-h-0">
           {category === "image" ? (
-            <div className="flex h-full items-center justify-center p-4">
+            <div className="flex h-full w-full items-center justify-center p-6">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={urls.image}
                 alt={attachment.fileName}
-                className="max-h-full max-w-full object-contain rounded"
+                className="max-h-full max-w-full object-contain rounded-lg shadow-lg"
               />
             </div>
           ) : (
             <iframe
               src={urls.preview}
-              className="w-full h-full min-h-[60vh]"
+              className="w-full h-full"
+              style={{ minHeight: 0 }}
               title={attachment.fileName}
               sandbox="allow-scripts allow-same-origin allow-popups"
             />

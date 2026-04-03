@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Calendar, CheckSquare, Clock, GripVertical } from "lucide-react";
+import { Calendar, CheckSquare, Clock, GripVertical, Paperclip } from "lucide-react";
 import { Task, Role } from "@/types";
 import { cn, PRIORITY_CONFIG, formatDate, isOverdue, canEdit } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -37,6 +37,7 @@ export function TaskCard({ task, myRole, isDragOverlay, onClick }: TaskCardProps
   const completedSubTasks = task.subTasks?.filter((s) => s.isCompleted).length ?? 0;
   const totalSubTasks = task.subTasks?.length ?? 0;
   const hasPendingApproval = !!task.pendingApproval;
+  const attachmentCount = task.attachmentCount ?? 0;
 
   return (
     <div
@@ -103,6 +104,13 @@ export function TaskCard({ task, myRole, isDragOverlay, onClick }: TaskCardProps
                 <span className="text-[10px]">
                   {completedSubTasks}/{totalSubTasks}
                 </span>
+              </div>
+            )}
+            {/* Attachments */}
+            {attachmentCount > 0 && (
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Paperclip className="h-3 w-3" />
+                <span className="text-[10px]">{attachmentCount}</span>
               </div>
             )}
             {/* Deadline */}

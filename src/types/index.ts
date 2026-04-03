@@ -74,6 +74,7 @@ export interface Task {
   assignees: Pick<User, "id" | "name" | "avatarColor">[];
   labels: Label[];
   subTasks: SubTask[];
+  attachmentCount?: number;
   pendingApproval?: Approval;
 }
 

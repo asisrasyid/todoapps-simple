@@ -140,6 +140,7 @@ function getBoard(params, userId) {
   var allLabels = findRows("Labels", "board_id", boardId);
   var allApprovals = getAllRows("Approvals");
   var allUsers = getAllRows("Users");
+  var allAttachments = getAllRows("Task_Attachments");
 
   var userMap = {};
   allUsers.forEach(function(u) {
@@ -174,6 +175,8 @@ function getBoard(params, userId) {
       return a.task_id === t.id && a.status === "pending";
     });
 
+    var attachmentCount = allAttachments.filter(function(a) { return a.task_id === t.id; }).length;
+
     return {
       id: t.id,
       boardId: t.board_id,
@@ -189,6 +192,7 @@ function getBoard(params, userId) {
       assignees: assignees,
       labels: labels,
       subTasks: subTasks,
+      attachmentCount: attachmentCount,
       pendingApproval: pendingApproval ? {
         id: pendingApproval.id,
         status: pendingApproval.status

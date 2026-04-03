@@ -1,11 +1,28 @@
 // ─── Attachment Service ────────────────────────────────────────────────────────
 
-var DRIVE_FOLDER_NAME = "TodoTrack Attachments";
+var DRIVE_ROOT_FOLDER_NAME = "Task-Todo_attch";
 
-function getOrCreateAttachmentFolder() {
-  var folders = DriveApp.getFoldersByName(DRIVE_FOLDER_NAME);
-  if (folders.hasNext()) return folders.next();
-  return DriveApp.createFolder(DRIVE_FOLDER_NAME);
+function getOrCreateFolder(parent, name) {
+  var iter = parent.getFoldersByName(name);
+  if (iter.hasNext()) return iter.next();
+  return parent.createFolder(name);
+}
+
+function getUploadFolder(userId) {
+  var today = new Date();
+  var year  = String(today.getFullYear());
+  var month = String(today.getMonth() + 1).padStart(2, "0");
+  var date  = String(today.getDate()).padStart(2, "0");
+
+  var user     = findRow("Users", "id", userId);
+  var userName = user ? user.username : userId;
+
+  var root     = getOrCreateFolder(DriveApp.getRootFolder(), DRIVE_ROOT_FOLDER_NAME);
+  var userDir  = getOrCreateFolder(root, userName);
+  var yearDir  = getOrCreateFolder(userDir, year);
+  var monDir   = getOrCreateFolder(yearDir, month);
+  var dayDir   = getOrCreateFolder(monDir, date);
+  return dayDir;
 }
 
 function uploadAttachment(params, userId) {
@@ -31,7 +48,7 @@ function uploadAttachment(params, userId) {
     return err("Invalid file data: " + e.message);
   }
 
-  var folder = getOrCreateAttachmentFolder();
+  var folder = getUploadFolder(userId);
   var file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
