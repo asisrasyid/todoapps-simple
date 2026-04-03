@@ -1,4 +1,4 @@
-import { ApiResponse, Board, BoardData, BoardMember, Approval, User } from "@/types";
+import { ApiResponse, Attachment, Board, BoardData, BoardMember, Approval, User } from "@/types";
 
 // Replace this with your deployed Google Apps Script Web App URL
 const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL || "";
@@ -199,6 +199,61 @@ export async function apiGetPublicBoard(boardId: string) {
     columns: { id: string; name: string; position: number; color: string }[];
     tasks: { id: string; columnId: string; title: string; priority: string; deadline: string | null; position: number; assignees: { id: string; name: string; avatarColor: string }[] }[];
   };
+}
+
+// ─── Attachments ─────────────────────────────────────────────────────────────
+
+export const ACCEPTED_ATTACHMENT_TYPES =
+  "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.sql";
+
+export const MAX_ATTACHMENT_SIZE = 4 * 1024 * 1024; // 4MB
+
+export function getDriveUrls(fileId: string) {
+  return {
+    preview: `https://drive.google.com/file/d/${fileId}/preview`,
+    thumbnail: `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`,
+    image: `https://drive.google.com/uc?export=view&id=${fileId}`,
+    download: `https://drive.google.com/uc?export=download&id=${fileId}`,
+  };
+}
+
+export async function apiGetTaskAttachments(taskId: string) {
+  return callAPI<Attachment[]>("getTaskAttachments", { taskId }, getToken());
+}
+
+export async function apiUploadAttachment(taskId: string, file: File): Promise<Attachment> {
+  return new Promise((resolve, reject) => {
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      reject(new Error("File terlalu besar. Maksimal 4MB."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = (reader.result as string).split(",")[1];
+      try {
+        const result = await callAPI<Attachment>(
+          "uploadAttachment",
+          {
+            taskId,
+            fileName: file.name,
+            mimeType: file.type || "application/octet-stream",
+            fileSize: file.size,
+            data: base64,
+          },
+          getToken()
+        );
+        resolve(result);
+      } catch (e) {
+        reject(e);
+      }
+    };
+    reader.onerror = () => reject(new Error("Gagal membaca file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function apiDeleteAttachment(attachmentId: string) {
+  return callAPI("deleteAttachment", { attachmentId }, getToken());
 }
 
 // ─── API Key Management ───────────────────────────────────────────────────────

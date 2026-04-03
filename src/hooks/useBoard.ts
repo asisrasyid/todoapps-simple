@@ -18,6 +18,9 @@ import {
   apiRemoveTaskLabel,
   apiAddAssignee,
   apiRemoveAssignee,
+  apiGetTaskAttachments,
+  apiUploadAttachment,
+  apiDeleteAttachment,
 } from "@/lib/api";
 
 export function useBoard(boardId: string) {
@@ -188,6 +191,30 @@ export function useAssigneeMutations(boardId: string) {
     removeAssignee: useMutation({
       mutationFn: ({ taskId, userId }: { taskId: string; userId: string }) =>
         apiRemoveAssignee(taskId, userId),
+      onSuccess: invalidate,
+    }),
+  };
+}
+
+export function useTaskAttachments(taskId: string) {
+  return useQuery({
+    queryKey: ["attachments", taskId],
+    queryFn: () => apiGetTaskAttachments(taskId),
+    staleTime: 60_000,
+  });
+}
+
+export function useAttachmentMutations(taskId: string) {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["attachments", taskId] });
+
+  return {
+    upload: useMutation({
+      mutationFn: (file: File) => apiUploadAttachment(taskId, file),
+      onSuccess: invalidate,
+    }),
+    remove: useMutation({
+      mutationFn: (attachmentId: string) => apiDeleteAttachment(attachmentId),
       onSuccess: invalidate,
     }),
   };

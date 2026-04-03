@@ -14,7 +14,9 @@
       "Bash(find 'D:/LEARN AND DEV/Todo_apps/sheetmaster-app' -name *.gs -o -name *.js)",
       "Bash(ls \"D:/LEARN AND DEV/Todo_apps/sheetmaster-app/src/app/\\(dashboard\\)/\")",
       "Bash(ls \"D:/LEARN AND DEV/Todo_apps/sheetmaster-app/src/app/\\(dashboard\\)/profile/\")",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git:*)"
     ]
   }
 }

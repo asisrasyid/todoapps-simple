@@ -103,6 +103,17 @@ export interface BoardData {
   labels: Label[];
 }
 
+export interface Attachment {
+  id: string;
+  taskId: string;
+  fileId: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  createdBy: string;
+  createdAt: string;
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;

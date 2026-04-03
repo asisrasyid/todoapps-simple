@@ -74,6 +74,11 @@ function doPost(e) {
       case "updateOwnProfile": return updateOwnProfile(params, user.id);
       case "changeOwnPassword": return changeOwnPassword(params, user.id);
 
+      // Attachments
+      case "uploadAttachment": return uploadAttachment(params, user.id);
+      case "deleteAttachment": return deleteAttachment(params, user.id);
+      case "getTaskAttachments": return getTaskAttachments(params, user.id);
+
       // Dashboard
       case "getDashboardData": return getDashboardData(params, user.id);
 
@@ -123,7 +128,8 @@ function setupSpreadsheet() {
       "SubTasks":      ["id", "task_id", "title", "is_completed", "position"],
       "Labels":        ["id", "board_id", "name", "color"],
       "Task_Labels":   ["task_id", "label_id"],
-      "Approvals":     ["id", "task_id", "from_column_id", "to_column_id", "requested_by", "approver_id", "status", "note", "created_at"]
+      "Approvals":        ["id", "task_id", "from_column_id", "to_column_id", "requested_by", "approver_id", "status", "note", "created_at"],
+      "Task_Attachments": ["id", "task_id", "file_id", "file_name", "mime_type", "file_size", "created_by", "created_at"]
     };
 
     var sheetNames = Object.keys(SHEET_HEADERS);
@@ -198,7 +204,7 @@ function testSetup() {
   var expected = {
     "Users": 8, "Sessions": 3, "Boards": 6, "Board_Members": 3,
     "Columns": 6, "Tasks": 11, "Task_Assignees": 2, "SubTasks": 5,
-    "Labels": 4, "Task_Labels": 2, "Approvals": 9
+    "Labels": 4, "Task_Labels": 2, "Approvals": 9, "Task_Attachments": 8
   };
 
   var ss2 = SpreadsheetApp.openById(SS_ID);
@@ -252,7 +258,8 @@ function resetSheetHeaders() {
     "SubTasks":      ["id", "task_id", "title", "is_completed", "position"],
     "Labels":        ["id", "board_id", "name", "color"],
     "Task_Labels":   ["task_id", "label_id"],
-    "Approvals":     ["id", "task_id", "from_column_id", "to_column_id", "requested_by", "approver_id", "status", "note", "created_at"]
+    "Approvals":        ["id", "task_id", "from_column_id", "to_column_id", "requested_by", "approver_id", "status", "note", "created_at"],
+    "Task_Attachments": ["id", "task_id", "file_id", "file_name", "mime_type", "file_size", "created_by", "created_at"]
   };
 
   Object.keys(SHEET_HEADERS).forEach(function(name) {

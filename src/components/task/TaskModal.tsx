@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { SubTaskList } from "./SubTaskList";
+import { AttachmentSection } from "./AttachmentSection";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/components/ui/toaster";
 import {
@@ -328,6 +329,11 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
               onDelete={(subTaskId) => deleteSubTask.mutate(subTaskId)}
             />
           </div>
+
+          <Separator />
+
+          {/* Attachments */}
+          <AttachmentSection taskId={task.id} myRole={myRole} />
         </div>
       </div>
     </div>
