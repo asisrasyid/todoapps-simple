@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Calendar, CheckSquare, Clock, GripVertical, Paperclip } from "lucide-react";
+import { Calendar, CheckSquare, GripVertical, MessageCircle, Paperclip } from "lucide-react";
 import { Task, Role } from "@/types";
 import { cn, PRIORITY_CONFIG, formatDate, isOverdue, canEdit } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -12,9 +12,10 @@ interface TaskCardProps {
   myRole: Role;
   isDragOverlay?: boolean;
   onClick: () => void;
+  onCommentClick?: () => void;
 }
 
-export function TaskCard({ task, myRole, isDragOverlay, onClick }: TaskCardProps) {
+export function TaskCard({ task, myRole, isDragOverlay, onClick, onCommentClick }: TaskCardProps) {
   const {
     attributes,
     listeners,
@@ -38,11 +39,13 @@ export function TaskCard({ task, myRole, isDragOverlay, onClick }: TaskCardProps
   const totalSubTasks = task.subTasks?.length ?? 0;
   const hasPendingApproval = !!task.pendingApproval;
   const attachmentCount = task.attachmentCount ?? 0;
+  const commentCount = task.commentCount ?? 0;
 
   return (
     <div
       ref={setNodeRef}
       style={style}
+      data-tour="task-card"
       className={cn(
         "group relative rounded-xl border-2 border-border bg-card border-l-[3px] cursor-pointer select-none",
         "hover:-translate-y-1 hover:shadow-toon-primary",
@@ -120,6 +123,21 @@ export function TaskCard({ task, myRole, isDragOverlay, onClick }: TaskCardProps
                 <span className="text-xs">{attachmentCount}</span>
               </div>
             )}
+            {/* Comments */}
+            <button
+              data-tour="task-comment"
+              onClick={(e) => { e.stopPropagation(); onCommentClick?.(); }}
+              className={cn(
+                "flex items-center gap-1 transition-colors",
+                commentCount > 0
+                  ? "text-primary/70 hover:text-primary"
+                  : "text-muted-foreground/50 hover:text-muted-foreground"
+              )}
+              title="Komentar"
+            >
+              <MessageCircle className="h-3 w-3" />
+              {commentCount > 0 && <span className="text-xs">{commentCount}</span>}
+            </button>
             {/* Deadline */}
             {task.deadline && (
               <div

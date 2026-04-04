@@ -75,6 +75,7 @@ export interface Task {
   labels: Label[];
   subTasks: SubTask[];
   attachmentCount?: number;
+  commentCount?: number;
   pendingApproval?: Approval;
 }
 
@@ -113,6 +114,18 @@ export interface Attachment {
   fileSize: number;
   createdBy: string;
   createdAt: string;
+}
+
+export interface Comment {
+  id: string;
+  taskId: string;
+  parentId: string | null;
+  userId: string;
+  userName: string;
+  avatarColor: string;
+  content: string;
+  createdAt: string;
+  replies?: Comment[];
 }
 
 export interface ApiResponse<T = unknown> {

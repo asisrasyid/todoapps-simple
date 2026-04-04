@@ -1,4 +1,4 @@
-import { ApiResponse, Attachment, Board, BoardData, BoardMember, Approval, User } from "@/types";
+import { ApiResponse, Attachment, Board, BoardData, BoardMember, Approval, Comment, User } from "@/types";
 
 // Replace this with your deployed Google Apps Script Web App URL
 const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL || "";
@@ -269,6 +269,24 @@ export async function apiUploadAttachment(taskId: string, file: File): Promise<A
 
 export async function apiDeleteAttachment(attachmentId: string) {
   return callAPI("deleteAttachment", { attachmentId }, getToken());
+}
+
+// ─── Comments ─────────────────────────────────────────────────────────────────
+
+export async function apiGetTaskComments(taskId: string) {
+  return callAPI<Comment[]>("getTaskComments", { taskId }, getToken());
+}
+
+export async function apiCreateComment(taskId: string, content: string, parentId?: string) {
+  return callAPI<Comment>("createComment", { taskId, content, parentId }, getToken());
+}
+
+export async function apiUpdateComment(commentId: string, content: string) {
+  return callAPI("updateComment", { commentId, content }, getToken());
+}
+
+export async function apiDeleteComment(commentId: string) {
+  return callAPI("deleteComment", { commentId }, getToken());
 }
 
 // ─── API Key Management ───────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { isAuthenticated } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { SidebarProvider } from "@/components/SidebarProvider";
+import { TourProvider } from "@/components/tour/TourProvider";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [router]);
 
   return (
+    <TourProvider>
     <SidebarProvider>
       <a
         href="#main-content"
@@ -24,5 +26,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <main id="main-content" role="main" className="flex-1 overflow-hidden flex flex-col min-w-0">{children}</main>
       </div>
     </SidebarProvider>
+    </TourProvider>
   );
 }

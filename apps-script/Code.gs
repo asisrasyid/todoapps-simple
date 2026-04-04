@@ -79,6 +79,12 @@ function doPost(e) {
       case "deleteAttachment": return deleteAttachment(params, user.id);
       case "getTaskAttachments": return getTaskAttachments(params, user.id);
 
+      // Comments
+      case "getTaskComments": return getTaskComments(params, user.id);
+      case "createComment":   return createComment(params, user.id);
+      case "deleteComment":   return deleteComment(params, user.id);
+      case "updateComment":   return updateComment(params, user.id);
+
       // Dashboard
       case "getDashboardData": return getDashboardData(params, user.id);
 
@@ -129,7 +135,8 @@ function setupSpreadsheet() {
       "Labels":        ["id", "board_id", "name", "color"],
       "Task_Labels":   ["task_id", "label_id"],
       "Approvals":        ["id", "task_id", "from_column_id", "to_column_id", "requested_by", "approver_id", "status", "note", "created_at"],
-      "Task_Attachments": ["id", "task_id", "file_id", "file_name", "mime_type", "file_size", "created_by", "created_at"]
+      "Task_Attachments": ["id", "task_id", "file_id", "file_name", "mime_type", "file_size", "created_by", "created_at"],
+      "Task_Comments":    ["id", "task_id", "parent_id", "user_id", "content", "created_at"]
     };
 
     var sheetNames = Object.keys(SHEET_HEADERS);

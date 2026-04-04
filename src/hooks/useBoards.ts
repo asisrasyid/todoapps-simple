@@ -6,7 +6,7 @@ export function useBoards() {
   return useQuery({
     queryKey: ["boards"],
     queryFn: apiGetBoards,
-    staleTime: 30_000,
+    staleTime: 120_000,
   });
 }
 

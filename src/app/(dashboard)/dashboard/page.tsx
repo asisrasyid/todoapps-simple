@@ -25,6 +25,8 @@ import { isAuthenticated } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { DashboardSkeleton } from "@/components/skeletons/DashboardSkeleton";
 import { ErrorState } from "@/components/ui/error-state";
+import { usePageTour } from "@/hooks/usePageTour";
+import { dashboardTourSteps, TOUR_DASHBOARD_KEY } from "@/lib/tour";
 
 const PRIORITY_COLOR: Record<string, string> = {
   high: "text-red-500",
@@ -60,6 +62,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { data, isLoading, isError } = useDashboard();
   const [filterRange, setFilterRange] = useState<DateRange>({ from: "", to: "" });
+  usePageTour(dashboardTourSteps, TOUR_DASHBOARD_KEY);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -118,6 +121,7 @@ export default function DashboardPage() {
     <Popover>
       <PopoverTrigger asChild>
         <button
+          data-tour="activity-filter"
           className={cn(
             "flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
             hasFilter
@@ -171,7 +175,7 @@ export default function DashboardPage() {
 
         {/* Stale tasks alert */}
         {staleTasks.length > 0 && (
-          <div className="shrink-0 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 flex items-start gap-3">
+          <div data-tour="stale-tasks" className="shrink-0 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 flex items-start gap-3">
             <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground">
@@ -203,6 +207,7 @@ export default function DashboardPage() {
 
         {/* Stats cards */}
         <motion.div
+          data-tour="stat-cards"
           className="shrink-0 grid grid-cols-2 gap-3 sm:grid-cols-4"
           initial="hidden"
           animate="visible"
@@ -246,7 +251,7 @@ export default function DashboardPage() {
         {/* Activity + Recent Activity — side by side ≥1300px, stacked below */}
         <div className="grid grid-cols-1 gap-3 min-[1300px]:flex-1 min-[1300px]:min-h-0 min-[1300px]:grid-cols-[3fr_2fr]">
           {/* Activity card */}
-          <div className="flex flex-col rounded-2xl border-2 border-border bg-card p-3 shadow-toon-sm
+          <div data-tour="contribution-grid" className="flex flex-col rounded-2xl border-2 border-border bg-card p-3 shadow-toon-sm
                           min-[1300px]:overflow-hidden min-[1300px]:min-h-0 min-[1300px]:p-4">
             <h2 className="mb-2 shrink-0 text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Activity
@@ -257,7 +262,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Recent activity card */}
-          <div className="flex flex-col overflow-hidden rounded-2xl border-2 border-border bg-card p-3 shadow-toon-sm
+          <div data-tour="recent-activity" className="flex flex-col overflow-hidden rounded-2xl border-2 border-border bg-card p-3 shadow-toon-sm
                           h-[280px] min-[1300px]:h-auto min-[1300px]:min-h-0 min-[1300px]:p-4">
             <div className="mb-2 flex shrink-0 items-center justify-between">
               <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Recent Activity</h2>

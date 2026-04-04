@@ -1,31 +1,33 @@
 // ─── Board Service ────────────────────────────────────────────────────────────
 
 function getBoards(params, userId) {
-  // Get boards where user is a member
-  var memberships = findRows("Board_Members", "user_id", userId);
-  var boardIds = memberships.map(function(m) { return m.board_id; });
+  return getCached("brds_" + userId, function() {
+    var memberships = findRows("Board_Members", "user_id", userId);
+    var boardIds = memberships.map(function(m) { return m.board_id; });
 
-  var allBoards = getAllRows("Boards").filter(function(b) {
-    return boardIds.indexOf(b.id) !== -1 && String(b.is_archived) !== "true";
-  });
+    var allBoards = getAllRows("Boards").filter(function(b) {
+      return boardIds.indexOf(b.id) !== -1 && String(b.is_archived) !== "true";
+    });
 
-  var roleMap = {};
-  memberships.forEach(function(m) { roleMap[m.board_id] = m.role; });
+    var roleMap = {};
+    memberships.forEach(function(m) { roleMap[m.board_id] = m.role; });
 
-  return ok(allBoards.map(function(b) {
-    return {
-      id: b.id,
-      name: b.name,
-      description: b.description,
-      createdBy: b.created_by,
-      createdAt: b.created_at,
-      isArchived: b.is_archived === "true" || b.is_archived === true,
-      myRole: roleMap[b.id] || "viewer"
-    };
-  }));
+    return ok(allBoards.map(function(b) {
+      return {
+        id: b.id,
+        name: b.name,
+        description: b.description,
+        createdBy: b.created_by,
+        createdAt: b.created_at,
+        isArchived: b.is_archived === "true" || b.is_archived === true,
+        myRole: roleMap[b.id] || "viewer"
+      };
+    }));
+  }, 180); // 3 minutes
 }
 
 function createBoard(params, userId) {
+  invalidateCache("brds_" + userId);
   var name = params.name;
   var description = params.description || "";
   if (!name) return err("Board name required");
@@ -81,6 +83,7 @@ function updateBoard(params, userId) {
   var boardId = params.boardId;
   var role = getBoardRole(boardId, userId);
   if (!role || (role !== "owner" && role !== "approver")) return err("Insufficient permissions");
+  invalidateCache("brd_" + boardId + "_" + userId, "brds_" + userId);
 
   updateRow("Boards", "id", boardId, {
     name: params.name || undefined,
@@ -95,6 +98,7 @@ function deleteBoard(params, userId) {
   var boardId = params.boardId;
   var role = getBoardRole(boardId, userId);
   if (role !== "owner") return err("Only owner can delete board");
+  invalidateCache("brd_" + boardId + "_" + userId, "brds_" + userId);
 
   // Clean up all related data
   var cols = findRows("Columns", "board_id", boardId);
@@ -116,6 +120,12 @@ function deleteBoard(params, userId) {
 
 function getBoard(params, userId) {
   var boardId = params.boardId;
+  return getCached("brd_" + boardId + "_" + userId, function() {
+    return _getBoardData(boardId, userId);
+  }, 120); // 2 minutes
+}
+
+function _getBoardData(boardId, userId) {
   var role = getBoardRole(boardId, userId);
   if (!role) return err("Access denied");
 
@@ -141,6 +151,7 @@ function getBoard(params, userId) {
   var allApprovals = getAllRows("Approvals");
   var allUsers = getAllRows("Users");
   var allAttachments = getAllRows("Task_Attachments");
+  var allComments    = getAllRows("Task_Comments");
 
   var userMap = {};
   allUsers.forEach(function(u) {
@@ -176,6 +187,7 @@ function getBoard(params, userId) {
     });
 
     var attachmentCount = allAttachments.filter(function(a) { return a.task_id === t.id; }).length;
+    var commentCount    = allComments.filter(function(c) { return c.task_id === t.id && !c.parent_id; }).length;
 
     return {
       id: t.id,
@@ -200,12 +212,16 @@ function getBoard(params, userId) {
     };
   });
 
+  // P16 fix: username was N+1 — now uses allUsers already in memory
+  var usernameMap = {};
+  allUsers.forEach(function(u) { usernameMap[u.id] = u.username || ""; });
+
   var members = findRows("Board_Members", "board_id", boardId).map(function(m) {
     var u = userMap[m.user_id];
     return u ? {
       userId: m.user_id,
       name: u.name,
-      username: (function() { var u2 = findRow("Users", "id", m.user_id); return u2 ? u2.username : ""; }()),
+      username: usernameMap[m.user_id] || "",
       avatarColor: u.avatarColor,
       role: m.role
     } : null;
@@ -226,7 +242,7 @@ function getBoard(params, userId) {
     members: members,
     labels: allLabels.map(function(l) { return { id: l.id, boardId: l.board_id, name: l.name, color: l.color }; })
   });
-}
+} // end _getBoardData
 
 function getBoardMembers(params, userId) {
   var boardId = params.boardId;
@@ -307,6 +323,7 @@ function createColumn(params, userId) {
   var boardId = params.boardId;
   var role = getBoardRole(boardId, userId);
   if (!role || (role !== "owner" && role !== "approver")) return err("Insufficient permissions");
+  invalidateCache("brd_" + boardId + "_" + userId);
 
   var cols = findRows("Columns", "board_id", boardId);
   var position = cols.length;
@@ -338,6 +355,7 @@ function updateColumn(params, userId) {
 
   var role = getBoardRole(col.board_id, userId);
   if (!role || (role !== "owner" && role !== "approver")) return err("Insufficient permissions");
+  invalidateCache("brd_" + col.board_id + "_" + userId);
 
   updateRow("Columns", "id", colId, {
     name: params.name,
@@ -354,6 +372,7 @@ function deleteColumn(params, userId) {
 
   var role = getBoardRole(col.board_id, userId);
   if (role !== "owner" && role !== "approver") return err("Insufficient permissions");
+  invalidateCache("brd_" + col.board_id + "_" + userId);
 
   // Delete tasks in column
   var tasks = findRows("Tasks", "column_id", colId);

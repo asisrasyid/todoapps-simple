@@ -24,6 +24,7 @@ import { useApprovals } from "@/hooks/useApprovals";
 import { canApprove } from "@/lib/utils";
 import { useSidebar } from "@/components/SidebarProvider";
 import { useTheme } from "@/components/ThemeProvider";
+import { useTour } from "@/components/tour/TourProvider";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
@@ -48,6 +49,7 @@ export function Sidebar() {
   const pendingCount = approvals?.length ?? 0;
   const { collapsed, mobileOpen, toggleCollapsed, setMobileOpen } = useSidebar();
   const { theme, setTheme } = useTheme();
+  const { startMainTour } = useTour();
 
   async function handleLogout() {
     try { await apiLogout(); } catch {}
@@ -62,6 +64,7 @@ export function Sidebar() {
       {/* ── Desktop sidebar ─────────────────────────────── */}
       <div className="hidden md:flex h-screen">
         <motion.aside
+          data-tour="sidebar"
           animate={{ width: collapsed ? 56 : 240 }}
           transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           // Clicking the collapsed sidebar expands it; icons still navigate via href
@@ -118,6 +121,7 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  data-tour={`nav-${item.href.replace("/", "")}`}
                   // stopPropagation so aside's onClick (expand) doesn't double-fire;
                   // we handle navigation directly. On collapsed, also expand.
                   onClick={(e) => { e.stopPropagation(); if (collapsed) toggleCollapsed(); }}
@@ -169,7 +173,7 @@ export function Sidebar() {
           </nav>
 
           {/* Theme toggle */}
-          <div className={cn("border-t border-border px-2 py-3", collapsed ? "flex justify-center" : "")}>
+          <div data-tour="theme-toggle" className={cn("border-t border-border px-2 py-3", collapsed ? "flex justify-center" : "")}>
             {collapsed ? (
               <button
                 onClick={(e) => {
@@ -206,6 +210,38 @@ export function Sidebar() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Help / tour trigger */}
+          <div data-tour="tour-help" className={cn("px-2 pb-1", collapsed ? "flex justify-center" : "")}>
+            <button
+              onClick={(e) => { e.stopPropagation(); startMainTour(); }}
+              aria-label="Mulai tur fitur"
+              title="Tur fitur"
+              className={cn(
+                "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors w-full",
+                collapsed ? "justify-center w-8 h-8 p-0" : ""
+              )}
+            >
+              <span className={cn(
+                "flex h-5 w-5 items-center justify-center rounded-full border-2 border-muted-foreground/40 text-[10px] font-bold shrink-0",
+                "hover:border-primary/60 hover:text-primary"
+              )}>?</span>
+              <AnimatePresence initial={false}>
+                {!collapsed && (
+                  <motion.span
+                    key="tour-label"
+                    initial={{ opacity: 0, x: -6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -6 }}
+                    transition={{ duration: 0.15 }}
+                    className="whitespace-nowrap"
+                  >
+                    Tur Fitur
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </button>
           </div>
 
           {/* User footer */}

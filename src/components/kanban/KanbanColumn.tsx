@@ -15,6 +15,7 @@ interface KanbanColumnProps {
   myRole: Role;
   isOver?: boolean;
   onTaskClick: (task: Task) => void;
+  onCommentClick: (task: Task) => void;
   onAddTask: (columnId: string, title: string) => Promise<void>;
   onRenameColumn: (columnId: string, name: string) => void;
   onDeleteColumn: (columnId: string) => void;
@@ -27,6 +28,7 @@ export function KanbanColumn({
   tasks,
   myRole,
   onTaskClick,
+  onCommentClick,
   onAddTask,
   onRenameColumn,
   onDeleteColumn,
@@ -112,6 +114,7 @@ export function KanbanColumn({
               task={task}
               myRole={myRole}
               onClick={() => onTaskClick(task)}
+              onCommentClick={() => onCommentClick(task)}
             />
           ))}
         </SortableContext>
@@ -186,6 +189,7 @@ export function KanbanColumn({
             </div>
           ) : (
             <button
+              data-tour="add-task"
               onClick={() => setAddingTask(true)}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
             >

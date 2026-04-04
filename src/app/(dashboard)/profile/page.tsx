@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -43,14 +43,20 @@ import {
   apiRevokeApiKey,
 } from "@/lib/api";
 import { User as UserType } from "@/types";
+import { usePageTour } from "@/hooks/usePageTour";
+import { profileTourSteps, TOUR_PROFILE_KEY } from "@/lib/tour";
 
 const ROLES = ["owner", "approver", "contributor", "viewer"] as const;
 
 export default function ProfilePage() {
-  const me = getStoredUser();
-  const isOwner = me?.roleGlobal === "owner";
-
   const [tab, setTab] = useState<"profile" | "users" | "apikeys">("profile");
+  const [isOwner, setIsOwner] = useState(false);
+
+  useEffect(() => {
+    const me = getStoredUser();
+    setIsOwner(me?.roleGlobal === "owner");
+  }, []);
+  usePageTour(profileTourSteps, TOUR_PROFILE_KEY);
 
   return (
     <>
@@ -63,7 +69,7 @@ export default function ProfilePage() {
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         >
           {/* Tabs */}
-          <div className="flex gap-1 rounded-2xl border-2 border-border bg-card p-1 w-fit">
+          <div data-tour="profile-tabs" className="flex gap-1 rounded-2xl border-2 border-border bg-card p-1 w-fit">
             <button
               onClick={() => setTab("profile")}
               className={cn(
@@ -116,13 +122,18 @@ export default function ProfilePage() {
 // ─── My Profile ───────────────────────────────────────────────────────────────
 
 function MyProfile() {
-  const me = getStoredUser();
   const queryClient = useQueryClient();
-
-  const [name, setName] = useState(me?.name ?? "");
+  const [me, setMe] = useState<ReturnType<typeof getStoredUser>>(null);
+  const [name, setName] = useState("");
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
+
+  useEffect(() => {
+    const user = getStoredUser();
+    setMe(user);
+    if (user) setName(user.name);
+  }, []);
 
   const updateProfile = useMutation({
     mutationFn: () => apiUpdateOwnProfile(name),
@@ -152,7 +163,7 @@ function MyProfile() {
   return (
     <div className="space-y-4">
       {/* Avatar + info */}
-      <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-4">
+      <div data-tour="profile-info" className="rounded-xl border border-border bg-card p-5 flex items-center gap-4">
         <Avatar className="h-14 w-14">
           <AvatarFallback
             style={{ backgroundColor: me.avatarColor + "33", color: me.avatarColor }}
@@ -171,7 +182,7 @@ function MyProfile() {
       </div>
 
       {/* Edit name */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div data-tour="edit-profile-btn" className="rounded-xl border border-border bg-card p-5 space-y-4">
         <h2 className="font-semibold flex items-center gap-2">
           <Pencil className="h-4 w-4 text-muted-foreground" />
           Edit Profile
@@ -455,7 +466,7 @@ function ApiKeys() {
   });
 
   return (
-    <div className="space-y-4">
+    <div data-tour="apikeys-section" className="space-y-4">
       {/* New key revealed */}
       {revealedKey && (
         <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 space-y-2">

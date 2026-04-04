@@ -85,7 +85,7 @@ function PreviewModal({
   return (
     // Outer container — captures focus for keyboard
     <motion.div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-2 md:p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -93,21 +93,17 @@ function PreviewModal({
       onKeyDown={handleKey}
       tabIndex={-1}
     >
-      {/* ── Backdrop ── */}
-      <motion.div
-        className="absolute inset-0 backdrop-blur-xl bg-background/10"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
+      {/* ── Backdrop — transparent clickable area ── */}
+      <div
+        className="absolute inset-0"
         onClick={onClose}
       />
 
-      {/* ── Modal panel ── */}
+      {/* ── Modal panel — 20% wider + taller ── */}
       <motion.div
-        className="relative z-10 flex flex-col w-full max-w-4xl rounded-2xl bg-card border-2 border-border overflow-hidden"
+        className="relative z-10 flex flex-col w-full max-w-[1075px] rounded-2xl bg-card border-2 border-border overflow-hidden"
         style={{
-          maxHeight: "85vh",
+          maxHeight: "95vh",
           boxShadow: `5px 5px 0px 0px ${accent}50`,
         }}
         initial={{ opacity: 0, scale: 0.88, y: 24 }}
@@ -185,7 +181,7 @@ function PreviewModal({
             <iframe
               src={urls.preview}
               className="w-full h-full"
-              style={{ minHeight: "400px" }}
+              style={{ minHeight: "600px" }}
               title={attachment.fileName}
               sandbox="allow-scripts allow-same-origin allow-popups"
             />

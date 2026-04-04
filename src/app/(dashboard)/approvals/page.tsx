@@ -16,6 +16,8 @@ import { useApprovals, useApproveTask, useRejectTask } from "@/hooks/useApproval
 import { Approval } from "@/types";
 import { toast } from "@/components/ui/toaster";
 import { formatDate } from "@/lib/utils";
+import { usePageTour } from "@/hooks/usePageTour";
+import { approvalsTourSteps, TOUR_APPROVALS_KEY } from "@/lib/tour";
 
 export default function ApprovalsPage() {
   const { data: approvals, isLoading } = useApprovals();
@@ -48,6 +50,7 @@ export default function ApprovalsPage() {
 
   const [filter, setFilter] = useState<"pending" | "all">("pending");
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
+  usePageTour(approvalsTourSteps, TOUR_APPROVALS_KEY);
   const pending = approvals?.filter((a) => a.status === "pending") ?? [];
   const filtered = filter === "pending" ? pending : (approvals ?? []);
   const displayed = [...filtered].sort((a, b) => {
@@ -56,7 +59,7 @@ export default function ApprovalsPage() {
   });
 
   const filterActions = (
-    <div className="flex items-center gap-2">
+    <div data-tour="approval-filter" className="flex items-center gap-2">
       <div className="flex items-center gap-1">
         {(["pending", "all"] as const).map((f) => (
           <button
@@ -112,9 +115,10 @@ export default function ApprovalsPage() {
             <p className="text-sm text-muted-foreground mb-4">
               {displayed.length} approval{displayed.length !== 1 ? "s" : ""}
             </p>
-            {displayed.map((approval) => (
+            {displayed.map((approval, idx) => (
               <motion.div
                 key={approval.id}
+                data-tour={idx === 0 ? "approval-card" : undefined}
                 variants={{ hidden: { opacity: 0, x: 20 }, visible: { opacity: 1, x: 0 } }}
                 transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               >
@@ -202,11 +206,11 @@ function ApprovalCard({
 
       {/* Actions */}
       <div className="flex gap-2 justify-end">
-        <Button size="sm" variant="outline" onClick={onReject} className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10">
+        <Button data-tour="reject-btn" size="sm" variant="outline" onClick={onReject} className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10">
           <XCircle className="h-4 w-4" />
           Reject
         </Button>
-        <Button size="sm" onClick={onApprove} disabled={approving} className="gap-1.5">
+        <Button data-tour="approve-btn" size="sm" onClick={onApprove} disabled={approving} className="gap-1.5">
           {approving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
           Approve
         </Button>

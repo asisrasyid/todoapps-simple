@@ -25,6 +25,8 @@ function createTask(params, userId) {
     position: position
   });
 
+  invalidateCache("brd_" + boardId + "_" + userId);
+
   return ok({
     id: taskId,
     boardId: boardId,
@@ -51,7 +53,6 @@ function updateTask(params, userId) {
 
   var role = getBoardRole(task.board_id, userId);
   if (!role || role === "viewer") return err("Insufficient permissions");
-  // Contributor can only edit own tasks
   if (role === "contributor" && task.created_by !== userId) return err("Can only edit own tasks");
 
   var updates = { updated_at: now() };
@@ -61,6 +62,7 @@ function updateTask(params, userId) {
   if (params.deadline !== undefined) updates.deadline = params.deadline;
 
   updateRow("Tasks", "id", taskId, updates);
+  invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok(null);
 }
 
@@ -78,6 +80,7 @@ function deleteTask(params, userId) {
   deleteRows("Task_Labels", "task_id", taskId);
   deleteRows("Approvals", "task_id", taskId);
   deleteRow("Tasks", "id", taskId);
+  invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok(null);
 }
 
@@ -95,14 +98,9 @@ function moveTask(params, userId) {
   var role = getBoardRole(task.board_id, userId);
   if (!role || role === "viewer") return err("Insufficient permissions");
 
-  // Check if column requires approval
   var requiresApproval = toCol.requires_approval === "true" || toCol.requires_approval === true;
   if (requiresApproval && role === "contributor") {
-    // Create approval request instead of moving
     var approvalId = generateId();
-    var fromCol = findRow("Columns", "id", task.column_id);
-
-    // Cancel any existing pending approval for this task
     var existing = findRows("Approvals", "task_id", taskId).filter(function(a) { return a.status === "pending"; });
     existing.forEach(function(a) { updateRow("Approvals", "id", a.id, { status: "cancelled" }); });
 
@@ -117,15 +115,16 @@ function moveTask(params, userId) {
       note: params.note || "",
       created_at: now()
     });
+    invalidateCache("brd_" + task.board_id + "_" + userId);
     return ok({ approvalRequested: true, approvalId: approvalId });
   }
 
-  // Direct move (Owner/Approver, or non-approval column)
   updateRow("Tasks", "id", taskId, {
     column_id: toColumnId,
     position: position,
     updated_at: now()
   });
+  invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok(null);
 }
 
@@ -142,6 +141,7 @@ function reorderTasks(params, userId) {
   taskIds.forEach(function(taskId, i) {
     updateRow("Tasks", "id", taskId, { position: i });
   });
+  invalidateCache("brd_" + col.board_id + "_" + userId);
   return ok(null);
 }
 
@@ -163,6 +163,7 @@ function createSubTask(params, userId) {
     is_completed: false,
     position: existing.length
   });
+  invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok({ id: subTaskId });
 }
 
@@ -180,6 +181,7 @@ function updateSubTask(params, userId) {
   if (params.title !== undefined) updates.title = params.title;
   if (params.isCompleted !== undefined) updates.is_completed = params.isCompleted;
   updateRow("SubTasks", "id", params.subTaskId, updates);
+  invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok(null);
 }
 
@@ -190,6 +192,7 @@ function deleteSubTask(params, userId) {
   var role = getBoardRole(task.board_id, userId);
   if (!role || role === "viewer") return err("Insufficient permissions");
   deleteRow("SubTasks", "id", params.subTaskId);
+  invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok(null);
 }
 
@@ -202,6 +205,7 @@ function createLabel(params, userId) {
 
   var labelId = generateId();
   appendRow("Labels", { id: labelId, board_id: boardId, name: params.name, color: params.color });
+  invalidateCache("brd_" + boardId + "_" + userId);
   return ok({ id: labelId });
 }
 
@@ -212,6 +216,7 @@ function deleteLabel(params, userId) {
   if (role !== "owner" && role !== "approver") return err("Insufficient permissions");
   deleteRows("Task_Labels", "label_id", params.labelId);
   deleteRow("Labels", "id", params.labelId);
+  invalidateCache("brd_" + label.board_id + "_" + userId);
   return ok(null);
 }
 
@@ -223,10 +228,14 @@ function addTaskLabel(params, userId) {
 
   var existing = findRows("Task_Labels", "task_id", params.taskId).find(function(tl) { return tl.label_id === params.labelId; });
   if (!existing) appendRow("Task_Labels", { task_id: params.taskId, label_id: params.labelId });
+  invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok(null);
 }
 
 function removeTaskLabel(params, userId) {
+  var task = findRow("Tasks", "id", params.taskId);
+  if (!task) return err("Task not found");
+
   var sheet = getSheet("Task_Labels");
   var data = sheet.getDataRange().getValues();
   var headers = data[0];
@@ -238,6 +247,7 @@ function removeTaskLabel(params, userId) {
       break;
     }
   }
+  invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok(null);
 }
 
@@ -250,10 +260,14 @@ function addAssignee(params, userId) {
   if (!role || role === "viewer") return err("Insufficient permissions");
   var existing = findRows("Task_Assignees", "task_id", params.taskId).find(function(a) { return a.user_id === params.userId; });
   if (!existing) appendRow("Task_Assignees", { task_id: params.taskId, user_id: params.userId });
+  invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok(null);
 }
 
 function removeAssignee(params, userId) {
+  var task = findRow("Tasks", "id", params.taskId);
+  if (!task) return err("Task not found");
+
   var sheet = getSheet("Task_Assignees");
   var data = sheet.getDataRange().getValues();
   var headers = data[0];
@@ -265,6 +279,7 @@ function removeAssignee(params, userId) {
       break;
     }
   }
+  invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok(null);
 }
 
@@ -286,7 +301,6 @@ function getPendingApprovals(params, userId) {
   var boardMap = {};
   allBoards.forEach(function(b) { boardMap[b.id] = b; });
 
-  // Filter to only approvals where user is owner/approver of the board
   var filtered = allApprovals.filter(function(a) {
     var task = taskMap[a.task_id];
     if (!task) return false;
@@ -331,14 +345,9 @@ function approveTask(params, userId) {
   var role = getBoardRole(task.board_id, userId);
   if (role !== "owner" && role !== "approver") return err("Insufficient permissions");
 
-  // Update approval
   updateRow("Approvals", "id", approval.id, { status: "approved", approver_id: userId });
-
-  // Move the task
-  updateRow("Tasks", "id", task.id, {
-    column_id: approval.to_column_id,
-    updated_at: now()
-  });
+  updateRow("Tasks", "id", task.id, { column_id: approval.to_column_id, updated_at: now() });
+  invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok(null);
 }
 
@@ -358,5 +367,6 @@ function rejectTask(params, userId) {
     approver_id: userId,
     note: params.note || ""
   });
+  invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok(null);
 }

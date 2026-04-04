@@ -26,6 +26,8 @@ import { ROLE_CONFIG } from "@/lib/utils";
 import { toast } from "@/components/ui/toaster";
 import { BoardSkeleton } from "@/components/skeletons/BoardSkeleton";
 import { ErrorState } from "@/components/ui/error-state";
+import { usePageTour } from "@/hooks/usePageTour";
+import { boardsTourSteps, TOUR_BOARDS_KEY } from "@/lib/tour";
 
 export default function BoardsPage() {
   const router = useRouter();
@@ -36,6 +38,7 @@ export default function BoardsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  usePageTour(boardsTourSteps, TOUR_BOARDS_KEY);
 
   async function handleCreate() {
     if (!name.trim()) return;
@@ -66,7 +69,7 @@ export default function BoardsPage() {
       <Topbar
         title="My Boards"
         actions={
-          <Button size="sm" onClick={() => setShowCreate(true)}>
+          <Button data-tour="new-board-btn" size="sm" onClick={() => setShowCreate(true)}>
             <Plus className="mr-2 h-4 w-4" />
             New Board
           </Button>
@@ -105,9 +108,10 @@ export default function BoardsPage() {
             animate="visible"
             variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
           >
-            {boards.map((board) => (
+            {boards.map((board, idx) => (
               <motion.div
                 key={board.id}
+                data-tour={idx === 0 ? "board-card" : undefined}
                 variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               >
@@ -219,7 +223,7 @@ function BoardCard({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <button className="rounded-md p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent">
+            <button data-tour="board-menu" className="rounded-md p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent">
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </DropdownMenuTrigger>

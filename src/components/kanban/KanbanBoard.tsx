@@ -25,6 +25,7 @@ import { canManageColumns, canEdit, canApprove, COLUMN_COLORS, cn } from "@/lib/
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
 import { TaskModal } from "@/components/task/TaskModal";
+import { CommentModal } from "@/components/task/CommentModal";
 import { ApprovalRequestModal } from "@/components/approval/ApprovalRequestModal";
 import { toast } from "@/components/ui/toaster";
 import {
@@ -37,6 +38,8 @@ import {
 } from "@/hooks/useBoard";
 import { useBoardStore } from "@/store/boardStore";
 import { apiMoveTask } from "@/lib/api";
+import { useTour } from "@/components/tour/TourProvider";
+import { TOUR_BOARD_KEY, isTourDone } from "@/lib/tour";
 
 interface KanbanBoardProps {
   boardData: BoardData;
@@ -85,6 +88,17 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
   }
   const boardScrollRef = useRef<HTMLDivElement>(null);
   const columnRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [commentTask, setCommentTask] = useState<Task | null>(null);
+  const { startBoardTour } = useTour();
+
+  // Auto-start board tour on first visit
+  useEffect(() => {
+    if (isTourDone(TOUR_BOARD_KEY)) return;
+    const t = setTimeout(() => startBoardTour(), 600);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [approvalPending, setApprovalPending] = useState<{
     task: Task;
     toColumn: Column;
@@ -334,13 +348,14 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
             items={sortedColumns.map((c) => `col:${c.id}`)}
             strategy={horizontalListSortingStrategy}
           >
-            {sortedColumns.map((col) => (
+            {sortedColumns.map((col, colIdx) => (
               <div
                 key={col.id}
                 ref={(el) => {
                   if (el) columnRefs.current.set(col.id, el);
                   else columnRefs.current.delete(col.id);
                 }}
+                data-tour={colIdx === 0 ? "kanban-column" : undefined}
                 className="flex h-full"
               >
                 <KanbanColumn
@@ -348,6 +363,7 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
                   tasks={getTasksForColumn(col.id)}
                   myRole={myRole}
                   onTaskClick={(task) => openTask(task)}
+                  onCommentClick={(task) => setCommentTask(task)}
                   onAddTask={handleAddTask}
                   onRenameColumn={handleRenameColumn}
                   onDeleteColumn={handleDeleteColumn}
@@ -393,6 +409,7 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
                 </div>
               ) : (
                 <button
+                  data-tour="add-column"
                   onClick={() => setAddingColumn(true)}
                   className="flex w-full items-center gap-2 rounded-xl border border-dashed border-border/60 px-4 py-3 text-sm text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-colors"
                 >
@@ -453,6 +470,18 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
             members={members}
             labels={labels}
             onClose={closeTask}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Comment modal */}
+      <AnimatePresence>
+        {commentTask && (
+          <CommentModal
+            key={commentTask.id}
+            task={commentTask}
+            myRole={myRole}
+            onClose={() => setCommentTask(null)}
           />
         )}
       </AnimatePresence>

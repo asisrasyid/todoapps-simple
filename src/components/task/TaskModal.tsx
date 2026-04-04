@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { SubTaskList } from "./SubTaskList";
 import { AttachmentSection } from "./AttachmentSection";
+import { CommentSection } from "./CommentSection";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/components/ui/toaster";
 import {
@@ -106,7 +107,7 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
     <div className="fixed inset-0 z-50 flex">
       {/* Backdrop */}
       <motion.div
-        className="absolute inset-0 backdrop-blur-xl bg-background/15"
+        className="absolute inset-0 bg-black/40"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -348,6 +349,11 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
 
           {/* Attachments */}
           <AttachmentSection taskId={task.id} myRole={myRole} />
+
+          <Separator />
+
+          {/* Comments */}
+          <CommentSection taskId={task.id} myRole={myRole} />
         </div>
       </motion.div>
     </div>

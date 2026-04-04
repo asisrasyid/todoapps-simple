@@ -1,0 +1,1 @@
+(function(){var t=localStorage.getItem('theme');var root=document.documentElement;if(t==='light'){root.classList.remove('dark');root.classList.add('light')}else if(t==='system'){var d=window.matchMedia('(prefers-color-scheme: dark)').matches;root.classList.toggle('dark',d);root.classList.toggle('light',!d)}})()
