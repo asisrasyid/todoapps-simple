@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -47,6 +48,7 @@ export default function BoardSettingsPage({ params }: SettingsPageProps) {
   const [newUsername, setNewUsername] = useState("");
   const [newRole, setNewRole] = useState<Role>("contributor");
   const [adding, setAdding] = useState(false);
+  const [removeMemberTarget, setRemoveMemberTarget] = useState<BoardMember | null>(null);
 
   async function handleAddMember() {
     if (!newUsername.trim()) return;
@@ -75,7 +77,13 @@ export default function BoardSettingsPage({ params }: SettingsPageProps) {
   }
 
   async function handleRemoveMember(member: BoardMember) {
-    if (!confirm(`Remove ${member.name} from this board?`)) return;
+    setRemoveMemberTarget(member);
+  }
+
+  async function confirmRemoveMember() {
+    if (!removeMemberTarget) return;
+    const member = removeMemberTarget;
+    setRemoveMemberTarget(null);
     try {
       await apiRemoveBoardMember(id, member.userId);
       qc.invalidateQueries({ queryKey: ["board", id] });
@@ -181,6 +189,22 @@ export default function BoardSettingsPage({ params }: SettingsPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Remove Member Confirmation Dialog */}
+      <Dialog open={removeMemberTarget !== null} onOpenChange={(open) => { if (!open) setRemoveMemberTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Hapus Member</DialogTitle>
+            <DialogDescription>
+              Hapus {removeMemberTarget?.name} dari board ini? Member tidak akan bisa mengakses board lagi.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemoveMemberTarget(null)}>Batal</Button>
+            <Button variant="destructive" onClick={confirmRemoveMember}>Hapus</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Member Dialog */}
       <Dialog open={showAddMember} onOpenChange={setShowAddMember}>

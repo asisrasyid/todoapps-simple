@@ -9,6 +9,14 @@ import { useTaskComments, useCommentMutations } from "@/hooks/useBoard";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface CommentSectionProps {
   taskId: string;
@@ -273,6 +281,7 @@ export function CommentSection({ taskId, myRole }: CommentSectionProps) {
 
   const { data: flat = [], isLoading } = useTaskComments(taskId);
   const { create, update, remove } = useCommentMutations(taskId);
+  const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
 
   const tree = buildTree(flat);
 
@@ -299,15 +308,22 @@ export function CommentSection({ taskId, myRole }: CommentSectionProps) {
   }
 
   async function handleDelete(commentId: string) {
-    if (!confirm("Hapus komentar ini beserta balasannya?")) return;
+    setDeleteCommentId(commentId);
+  }
+
+  async function confirmDeleteComment() {
+    if (!deleteCommentId) return;
+    const id = deleteCommentId;
+    setDeleteCommentId(null);
     try {
-      await remove.mutateAsync(commentId);
+      await remove.mutateAsync(id);
     } catch {
       toast({ title: "Gagal menghapus komentar", variant: "destructive" });
     }
   }
 
   return (
+    <>
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -371,5 +387,22 @@ export function CommentSection({ taskId, myRole }: CommentSectionProps) {
         </div>
       )}
     </div>
+
+    {/* Delete comment confirmation dialog */}
+    <Dialog open={deleteCommentId !== null} onOpenChange={(open) => { if (!open) setDeleteCommentId(null); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Hapus Komentar</DialogTitle>
+          <DialogDescription>
+            Hapus komentar ini beserta balasannya? Tindakan ini tidak dapat dibatalkan.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDeleteCommentId(null)}>Batal</Button>
+          <Button variant="destructive" onClick={confirmDeleteComment}>Hapus</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

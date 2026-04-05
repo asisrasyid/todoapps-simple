@@ -31,6 +31,14 @@ import {
   useAssigneeMutations,
 } from "@/hooks/useBoard";
 import { motion } from "framer-motion";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface TaskModalProps {
   task: Task;
@@ -48,6 +56,8 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
   const [editingDesc, setEditingDesc] = useState(false);
   const [savingTitle, setSavingTitle] = useState(false);
   const [savingDesc, setSavingDesc] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [unsavedConfirmOpen, setUnsavedConfirmOpen] = useState(false);
 
   const updateTask = useUpdateTask(boardId);
   const deleteTask = useDeleteTask(boardId);
@@ -94,7 +104,11 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
   }
 
   async function handleDelete() {
-    if (!confirm("Delete this task?")) return;
+    setDeleteConfirmOpen(true);
+  }
+
+  async function confirmDelete() {
+    setDeleteConfirmOpen(false);
     try {
       await deleteTask.mutateAsync(task.id);
       onClose();
@@ -114,7 +128,7 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
         transition={{ duration: 0.2 }}
         onClick={() => {
           const hasUnsaved = (editingTitle && title !== task.title) || (editingDesc && description !== (task.description || ""));
-          if (hasUnsaved && !confirm("Ada perubahan yang belum disimpan. Tutup tanpa menyimpan?")) return;
+          if (hasUnsaved) { setUnsavedConfirmOpen(true); return; }
           onClose();
         }}
       />
@@ -356,6 +370,38 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
           <CommentSection taskId={task.id} myRole={myRole} />
         </div>
       </motion.div>
+
+      {/* Delete task confirmation dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Hapus Task</DialogTitle>
+            <DialogDescription>
+              Apakah kamu yakin ingin menghapus task ini? Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Batal</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Hapus</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unsaved changes confirmation dialog */}
+      <Dialog open={unsavedConfirmOpen} onOpenChange={setUnsavedConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Perubahan Belum Disimpan</DialogTitle>
+            <DialogDescription>
+              Ada perubahan yang belum disimpan. Tutup tanpa menyimpan?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUnsavedConfirmOpen(false)}>Batal</Button>
+            <Button variant="destructive" onClick={() => { setUnsavedConfirmOpen(false); onClose(); }}>Tutup Tanpa Menyimpan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

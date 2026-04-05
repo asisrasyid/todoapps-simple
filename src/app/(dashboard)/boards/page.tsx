@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -38,6 +39,7 @@ export default function BoardsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [deleteBoardId, setDeleteBoardId] = useState<string | null>(null);
   usePageTour(boardsTourSteps, TOUR_BOARDS_KEY);
 
   async function handleCreate() {
@@ -55,9 +57,15 @@ export default function BoardsPage() {
 
   async function handleDelete(boardId: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm("Delete this board? All tasks will be lost.")) return;
+    setDeleteBoardId(boardId);
+  }
+
+  async function confirmDeleteBoard() {
+    if (!deleteBoardId) return;
+    const id = deleteBoardId;
+    setDeleteBoardId(null);
     try {
-      await deleteBoard.mutateAsync(boardId);
+      await deleteBoard.mutateAsync(id);
       toast({ title: "Board deleted", variant: "success" });
     } catch (err: unknown) {
       toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to delete", variant: "destructive" });
@@ -134,6 +142,22 @@ export default function BoardsPage() {
           </motion.div>
         )}
       </div>
+
+      {/* Delete Board Confirmation Dialog */}
+      <Dialog open={deleteBoardId !== null} onOpenChange={(open) => { if (!open) setDeleteBoardId(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Hapus Board</DialogTitle>
+            <DialogDescription>
+              Hapus board ini? Semua task di dalamnya akan ikut terhapus dan tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteBoardId(null)}>Batal</Button>
+            <Button variant="destructive" onClick={confirmDeleteBoard}>Hapus</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Board Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>

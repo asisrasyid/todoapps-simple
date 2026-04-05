@@ -29,6 +29,15 @@ import { CommentModal } from "@/components/task/CommentModal";
 import { ApprovalRequestModal } from "@/components/approval/ApprovalRequestModal";
 import { toast } from "@/components/ui/toaster";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
   useCreateTask,
   useMoveTask,
   useCreateColumn,
@@ -106,6 +115,7 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
   const [addingColumn, setAddingColumn] = useState(false);
   const [newColName, setNewColName] = useState("");
   const [addingCol, setAddingCol] = useState(false);
+  const [deleteColumnTarget, setDeleteColumnTarget] = useState<{ id: string; taskCount: number } | null>(null);
 
   const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -223,7 +233,14 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
 
   async function handleDeleteColumn(columnId: string) {
     const colTasks = getTasksForColumn(columnId);
-    if (colTasks.length > 0 && !confirm(`This column has ${colTasks.length} tasks. Delete anyway?`)) return;
+    if (colTasks.length > 0) {
+      setDeleteColumnTarget({ id: columnId, taskCount: colTasks.length });
+      return;
+    }
+    await executeDeleteColumn(columnId);
+  }
+
+  async function executeDeleteColumn(columnId: string) {
     try {
       await deleteColumn.mutateAsync(columnId);
     } catch {
@@ -495,6 +512,31 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
           onClose={() => setApprovalPending(null)}
         />
       )}
+
+      {/* Delete column confirmation dialog */}
+      <Dialog open={deleteColumnTarget !== null} onOpenChange={(open) => { if (!open) setDeleteColumnTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Hapus Kolom</DialogTitle>
+            <DialogDescription>
+              Kolom ini memiliki {deleteColumnTarget?.taskCount} task. Hapus kolom beserta semua task-nya?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteColumnTarget(null)}>Batal</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                const id = deleteColumnTarget!.id;
+                setDeleteColumnTarget(null);
+                executeDeleteColumn(id);
+              }}
+            >
+              Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

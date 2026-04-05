@@ -21,6 +21,14 @@ import { useTaskAttachments, useAttachmentMutations } from "@/hooks/useBoard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toaster";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface AttachmentSectionProps {
   taskId: string;
@@ -294,6 +302,7 @@ export function AttachmentSection({ taskId, myRole }: AttachmentSectionProps) {
   const fileInputRef  = useRef<HTMLInputElement>(null);
   const [previewing, setPreviewing]   = useState<Attachment | null>(null);
   const [deletingId, setDeletingId]   = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Attachment | null>(null);
 
   const { data: attachments = [], isLoading } = useTaskAttachments(taskId);
   const { upload, remove } = useAttachmentMutations(taskId);
@@ -323,7 +332,13 @@ export function AttachmentSection({ taskId, myRole }: AttachmentSectionProps) {
   }
 
   async function handleDelete(attachment: Attachment) {
-    if (!confirm(`Hapus lampiran "${attachment.fileName}"?`)) return;
+    setDeleteTarget(attachment);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    const attachment = deleteTarget;
+    setDeleteTarget(null);
     setDeletingId(attachment.id);
     try {
       await remove.mutateAsync(attachment.id);
@@ -441,6 +456,22 @@ export function AttachmentSection({ taskId, myRole }: AttachmentSectionProps) {
           />
         )}
       </AnimatePresence>
+
+      {/* Delete attachment confirmation dialog */}
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Hapus Lampiran</DialogTitle>
+            <DialogDescription>
+              Hapus lampiran &quot;{deleteTarget?.fileName}&quot;? Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Batal</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Hapus</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
