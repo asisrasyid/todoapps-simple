@@ -13,6 +13,7 @@ import {
   Moon,
   Monitor,
   X,
+  Loader2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn, ROLE_CONFIG } from "@/lib/utils";
@@ -44,6 +45,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<UserType | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   useEffect(() => { setUser(getStoredUser()); }, []);
   const { data: approvals } = useApprovals();
   const pendingCount = approvals?.length ?? 0;
@@ -52,6 +54,7 @@ export function Sidebar() {
   const { startMainTour } = useTour();
 
   async function handleLogout() {
+    setLoggingOut(true);
     try { await apiLogout(); } catch {}
     clearSession();
     router.push("/login");
@@ -273,11 +276,14 @@ export function Sidebar() {
                     </div>
                     <button
                       onClick={handleLogout}
-                      aria-label="Logout"
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0"
-                      title="Logout"
+                      disabled={loggingOut}
+                      aria-label={loggingOut ? "Logging out…" : "Logout"}
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0 disabled:opacity-60"
+                      title={loggingOut ? "Logging out…" : "Logout"}
                     >
-                      <LogOut className="h-4 w-4" />
+                      {loggingOut
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <LogOut className="h-4 w-4" />}
                     </button>
                   </motion.div>
                 )}
@@ -400,8 +406,15 @@ export function Sidebar() {
                         {ROLE_CONFIG[user.roleGlobal].label}
                       </p>
                     </div>
-                    <button onClick={handleLogout} aria-label="Logout" className="rounded-md p-1.5 text-muted-foreground hover:text-foreground transition-colors shrink-0">
-                      <LogOut className="h-4 w-4" />
+                    <button
+                      onClick={handleLogout}
+                      disabled={loggingOut}
+                      aria-label={loggingOut ? "Logging out…" : "Logout"}
+                      className="rounded-md p-1.5 text-muted-foreground hover:text-foreground transition-colors shrink-0 disabled:opacity-60"
+                    >
+                      {loggingOut
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <LogOut className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>

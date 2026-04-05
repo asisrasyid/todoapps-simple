@@ -62,10 +62,9 @@ export default function BoardsPage() {
 
   async function confirmDeleteBoard() {
     if (!deleteBoardId) return;
-    const id = deleteBoardId;
-    setDeleteBoardId(null);
     try {
-      await deleteBoard.mutateAsync(id);
+      await deleteBoard.mutateAsync(deleteBoardId);
+      setDeleteBoardId(null);
       toast({ title: "Board deleted", variant: "success" });
     } catch (err: unknown) {
       toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to delete", variant: "destructive" });
@@ -144,7 +143,7 @@ export default function BoardsPage() {
       </div>
 
       {/* Delete Board Confirmation Dialog */}
-      <Dialog open={deleteBoardId !== null} onOpenChange={(open) => { if (!open) setDeleteBoardId(null); }}>
+      <Dialog open={deleteBoardId !== null} onOpenChange={(open) => { if (!open && !deleteBoard.isPending) setDeleteBoardId(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Hapus Board</DialogTitle>
@@ -153,8 +152,11 @@ export default function BoardsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteBoardId(null)}>Batal</Button>
-            <Button variant="destructive" onClick={confirmDeleteBoard}>Hapus</Button>
+            <Button variant="outline" onClick={() => setDeleteBoardId(null)} disabled={deleteBoard.isPending}>Batal</Button>
+            <Button variant="destructive" onClick={confirmDeleteBoard} disabled={deleteBoard.isPending}>
+              {deleteBoard.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Hapus
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -49,6 +49,8 @@ export default function BoardSettingsPage({ params }: SettingsPageProps) {
   const [newRole, setNewRole] = useState<Role>("contributor");
   const [adding, setAdding] = useState(false);
   const [removeMemberTarget, setRemoveMemberTarget] = useState<BoardMember | null>(null);
+  const [removingMember, setRemovingMember] = useState(false);
+  const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
 
   async function handleAddMember() {
     if (!newUsername.trim()) return;
@@ -67,12 +69,15 @@ export default function BoardSettingsPage({ params }: SettingsPageProps) {
   }
 
   async function handleUpdateRole(userId: string, role: Role) {
+    setUpdatingRoleUserId(userId);
     try {
       await apiUpdateBoardMember(id, userId, role);
       qc.invalidateQueries({ queryKey: ["board", id] });
       toast({ title: "Role updated", variant: "success" });
     } catch {
       toast({ title: "Failed to update role", variant: "destructive" });
+    } finally {
+      setUpdatingRoleUserId(null);
     }
   }
 
@@ -82,14 +87,16 @@ export default function BoardSettingsPage({ params }: SettingsPageProps) {
 
   async function confirmRemoveMember() {
     if (!removeMemberTarget) return;
-    const member = removeMemberTarget;
-    setRemoveMemberTarget(null);
+    setRemovingMember(true);
     try {
-      await apiRemoveBoardMember(id, member.userId);
+      await apiRemoveBoardMember(id, removeMemberTarget.userId);
       qc.invalidateQueries({ queryKey: ["board", id] });
       toast({ title: "Member removed" });
+      setRemoveMemberTarget(null);
     } catch {
       toast({ title: "Failed to remove member", variant: "destructive" });
+    } finally {
+      setRemovingMember(false);
     }
   }
 
@@ -153,11 +160,17 @@ export default function BoardSettingsPage({ params }: SettingsPageProps) {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button
-                          disabled={!canManage}
-                          className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${ROLE_CONFIG[member.role].color} ${canManage ? "hover:bg-accent cursor-pointer" : "cursor-default"} transition-colors`}
+                          disabled={!canManage || updatingRoleUserId === member.userId}
+                          className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${ROLE_CONFIG[member.role].color} ${canManage ? "hover:bg-accent cursor-pointer" : "cursor-default"} transition-colors disabled:opacity-60`}
                         >
-                          {ROLE_CONFIG[member.role].label}
-                          {canManage && <ChevronDown className="h-3 w-3" />}
+                          {updatingRoleUserId === member.userId
+                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                            : (
+                              <>
+                                {ROLE_CONFIG[member.role].label}
+                                {canManage && <ChevronDown className="h-3 w-3" />}
+                              </>
+                            )}
                         </button>
                       </DropdownMenuTrigger>
                       {canManage && (
@@ -191,7 +204,7 @@ export default function BoardSettingsPage({ params }: SettingsPageProps) {
       </div>
 
       {/* Remove Member Confirmation Dialog */}
-      <Dialog open={removeMemberTarget !== null} onOpenChange={(open) => { if (!open) setRemoveMemberTarget(null); }}>
+      <Dialog open={removeMemberTarget !== null} onOpenChange={(open) => { if (!open && !removingMember) setRemoveMemberTarget(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Hapus Member</DialogTitle>
@@ -200,8 +213,11 @@ export default function BoardSettingsPage({ params }: SettingsPageProps) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRemoveMemberTarget(null)}>Batal</Button>
-            <Button variant="destructive" onClick={confirmRemoveMember}>Hapus</Button>
+            <Button variant="outline" onClick={() => setRemoveMemberTarget(null)} disabled={removingMember}>Batal</Button>
+            <Button variant="destructive" onClick={confirmRemoveMember} disabled={removingMember}>
+              {removingMember && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Hapus
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

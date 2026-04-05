@@ -58,6 +58,10 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
   const [savingDesc, setSavingDesc] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [unsavedConfirmOpen, setUnsavedConfirmOpen] = useState(false);
+  const [updatingPriority, setUpdatingPriority] = useState(false);
+  const [updatingDeadline, setUpdatingDeadline] = useState(false);
+  const [togglingAssigneeId, setTogglingAssigneeId] = useState<string | null>(null);
+  const [togglingLabelId, setTogglingLabelId] = useState<string | null>(null);
 
   const updateTask = useUpdateTask(boardId);
   const deleteTask = useDeleteTask(boardId);
@@ -92,15 +96,19 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
   }
 
   async function handlePriorityChange(priority: Priority) {
+    setUpdatingPriority(true);
     try {
       await updateTask.mutateAsync({ taskId: task.id, updates: { priority } });
     } catch { toast({ title: "Failed to update priority", variant: "destructive" }); }
+    finally { setUpdatingPriority(false); }
   }
 
   async function handleDeadlineChange(deadline: string) {
+    setUpdatingDeadline(true);
     try {
       await updateTask.mutateAsync({ taskId: task.id, updates: { deadline } });
     } catch { toast({ title: "Failed to update deadline", variant: "destructive" }); }
+    finally { setUpdatingDeadline(false); }
   }
 
   async function handleDelete() {
@@ -108,9 +116,9 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
   }
 
   async function confirmDelete() {
-    setDeleteConfirmOpen(false);
     try {
       await deleteTask.mutateAsync(task.id);
+      setDeleteConfirmOpen(false);
       onClose();
     } catch { toast({ title: "Failed to delete task", variant: "destructive" }); }
   }
@@ -189,10 +197,12 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
             <Popover>
               <PopoverTrigger asChild>
                 <button
-                  disabled={!editable}
-                  className={`flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm transition-colors ${editable ? "hover:bg-accent cursor-pointer" : "cursor-default opacity-70"}`}
+                  disabled={!editable || updatingPriority}
+                  className={`flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm transition-colors ${editable ? "hover:bg-accent cursor-pointer" : "cursor-default opacity-70"} disabled:opacity-60`}
                 >
-                  <Flag className={`h-4 w-4 ${PRIORITY_CONFIG[task.priority].color}`} />
+                  {updatingPriority
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Flag className={`h-4 w-4 ${PRIORITY_CONFIG[task.priority].color}`} />}
                   <span>{PRIORITY_CONFIG[task.priority].label}</span>
                 </button>
               </PopoverTrigger>
@@ -202,7 +212,8 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
                     <button
                       key={p}
                       onClick={() => handlePriorityChange(p)}
-                      className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors ${task.priority === p ? "bg-accent" : ""}`}
+                      disabled={updatingPriority}
+                      className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50 ${task.priority === p ? "bg-accent" : ""}`}
                     >
                       <Flag className={`h-4 w-4 ${PRIORITY_CONFIG[p].color}`} />
                       {PRIORITY_CONFIG[p].label}
@@ -213,14 +224,15 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
             </Popover>
 
             {/* Deadline */}
-            <div className={isOverdue(task.deadline) ? "[&_button]:border-red-400/60 [&_button]:text-red-400" : ""}>
+            <div className={`flex items-center gap-1.5 ${isOverdue(task.deadline) ? "[&_button]:border-red-400/60 [&_button]:text-red-400" : ""}`}>
               <DatePicker
                 value={task.deadline?.split("T")[0] || ""}
                 onChange={handleDeadlineChange}
                 placeholder="Set deadline"
-                disabled={!editable}
+                disabled={!editable || updatingDeadline}
                 clearable
               />
+              {updatingDeadline && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
             </div>
           </div>
 
@@ -235,23 +247,35 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
             <div className="flex flex-wrap gap-2">
               {members.map((m) => {
                 const isAssigned = assigneeIds.includes(m.userId);
+                const isToggling = togglingAssigneeId === m.userId;
                 return (
                   <button
                     key={m.userId}
-                    disabled={!editable}
-                    onClick={() =>
-                      editable &&
-                      (isAssigned
-                        ? removeAssignee.mutate({ taskId: task.id, userId: m.userId })
-                        : addAssignee.mutate({ taskId: task.id, userId: m.userId }))
-                    }
-                    className={`flex items-center gap-2 rounded-full px-2.5 py-1 text-xs transition-colors ${isAssigned ? "bg-primary/20 text-primary ring-1 ring-primary/40" : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"} ${!editable ? "cursor-default" : ""}`}
+                    disabled={!editable || !!togglingAssigneeId}
+                    onClick={() => {
+                      if (!editable || togglingAssigneeId) return;
+                      setTogglingAssigneeId(m.userId);
+                      if (isAssigned) {
+                        removeAssignee.mutate({ taskId: task.id, userId: m.userId }, {
+                          onSettled: () => setTogglingAssigneeId(null),
+                        });
+                      } else {
+                        addAssignee.mutate({ taskId: task.id, userId: m.userId }, {
+                          onSettled: () => setTogglingAssigneeId(null),
+                        });
+                      }
+                    }}
+                    className={`flex items-center gap-2 rounded-full px-2.5 py-1 text-xs transition-colors ${isAssigned ? "bg-primary/20 text-primary ring-1 ring-primary/40" : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"} ${!editable ? "cursor-default" : ""} disabled:opacity-60`}
                   >
-                    <Avatar className="h-4 w-4">
-                      <AvatarFallback className="text-[8px]" style={{ backgroundColor: m.avatarColor + "33", color: m.avatarColor }}>
-                        {m.name.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    {isToggling
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                      : (
+                        <Avatar className="h-4 w-4">
+                          <AvatarFallback className="text-[8px]" style={{ backgroundColor: m.avatarColor + "33", color: m.avatarColor }}>
+                            {m.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
                     {m.name}
                   </button>
                 );
@@ -270,23 +294,32 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
             <div className="flex flex-wrap gap-2">
               {labels.map((label) => {
                 const isApplied = task.labels?.some((l) => l.id === label.id);
+                const isToggling = togglingLabelId === label.id;
                 return (
                   <button
                     key={label.id}
-                    disabled={!editable}
-                    onClick={() =>
-                      editable &&
-                      (isApplied
-                        ? removeTaskLabel.mutate({ taskId: task.id, labelId: label.id })
-                        : addTaskLabel.mutate({ taskId: task.id, labelId: label.id }))
-                    }
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors ${!editable ? "cursor-default" : ""}`}
+                    disabled={!editable || !!togglingLabelId}
+                    onClick={() => {
+                      if (!editable || togglingLabelId) return;
+                      setTogglingLabelId(label.id);
+                      if (isApplied) {
+                        removeTaskLabel.mutate({ taskId: task.id, labelId: label.id }, {
+                          onSettled: () => setTogglingLabelId(null),
+                        });
+                      } else {
+                        addTaskLabel.mutate({ taskId: task.id, labelId: label.id }, {
+                          onSettled: () => setTogglingLabelId(null),
+                        });
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors ${!editable ? "cursor-default" : ""} disabled:opacity-60`}
                     style={{
                       backgroundColor: isApplied ? label.color + "30" : label.color + "15",
                       color: label.color,
                       outline: isApplied ? `1.5px solid ${label.color}60` : "none",
                     }}
                   >
+                    {isToggling && <Loader2 className="h-3 w-3 animate-spin" />}
                     {label.name}
                   </button>
                 );
@@ -354,8 +387,8 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
               taskId={task.id}
               myRole={myRole}
               onCreate={async (title) => { await createSubTask.mutateAsync({ taskId: task.id, title }); }}
-              onToggle={(subTaskId, isCompleted) => updateSubTask.mutate({ subTaskId, updates: { isCompleted } })}
-              onDelete={(subTaskId) => deleteSubTask.mutate(subTaskId)}
+              onToggle={async (subTaskId, isCompleted) => { await updateSubTask.mutateAsync({ subTaskId, updates: { isCompleted } }); }}
+              onDelete={async (subTaskId) => { await deleteSubTask.mutateAsync(subTaskId); }}
             />
           </div>
 
@@ -372,7 +405,7 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
       </motion.div>
 
       {/* Delete task confirmation dialog */}
-      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <Dialog open={deleteConfirmOpen} onOpenChange={(open) => { if (!open && !deleteTask.isPending) setDeleteConfirmOpen(false); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Hapus Task</DialogTitle>
@@ -381,8 +414,11 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Batal</Button>
-            <Button variant="destructive" onClick={confirmDelete}>Hapus</Button>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)} disabled={deleteTask.isPending}>Batal</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleteTask.isPending}>
+              {deleteTask.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Hapus
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

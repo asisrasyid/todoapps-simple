@@ -116,6 +116,7 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
   const [newColName, setNewColName] = useState("");
   const [addingCol, setAddingCol] = useState(false);
   const [deleteColumnTarget, setDeleteColumnTarget] = useState<{ id: string; taskCount: number } | null>(null);
+  const [deletingColumn, setDeletingColumn] = useState(false);
 
   const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -241,10 +242,14 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
   }
 
   async function executeDeleteColumn(columnId: string) {
+    setDeletingColumn(true);
     try {
       await deleteColumn.mutateAsync(columnId);
+      setDeleteColumnTarget(null);
     } catch {
       toast({ title: "Failed to delete column", variant: "destructive" });
+    } finally {
+      setDeletingColumn(false);
     }
   }
 
@@ -514,7 +519,7 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
       )}
 
       {/* Delete column confirmation dialog */}
-      <Dialog open={deleteColumnTarget !== null} onOpenChange={(open) => { if (!open) setDeleteColumnTarget(null); }}>
+      <Dialog open={deleteColumnTarget !== null} onOpenChange={(open) => { if (!open && !deletingColumn) setDeleteColumnTarget(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Hapus Kolom</DialogTitle>
@@ -523,15 +528,13 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteColumnTarget(null)}>Batal</Button>
+            <Button variant="outline" onClick={() => setDeleteColumnTarget(null)} disabled={deletingColumn}>Batal</Button>
             <Button
               variant="destructive"
-              onClick={() => {
-                const id = deleteColumnTarget!.id;
-                setDeleteColumnTarget(null);
-                executeDeleteColumn(id);
-              }}
+              disabled={deletingColumn}
+              onClick={() => deleteColumnTarget && executeDeleteColumn(deleteColumnTarget.id)}
             >
+              {deletingColumn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Hapus
             </Button>
           </DialogFooter>

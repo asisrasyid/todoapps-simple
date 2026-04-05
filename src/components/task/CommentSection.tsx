@@ -313,10 +313,9 @@ export function CommentSection({ taskId, myRole }: CommentSectionProps) {
 
   async function confirmDeleteComment() {
     if (!deleteCommentId) return;
-    const id = deleteCommentId;
-    setDeleteCommentId(null);
     try {
-      await remove.mutateAsync(id);
+      await remove.mutateAsync(deleteCommentId);
+      setDeleteCommentId(null);
     } catch {
       toast({ title: "Gagal menghapus komentar", variant: "destructive" });
     }
@@ -389,7 +388,7 @@ export function CommentSection({ taskId, myRole }: CommentSectionProps) {
     </div>
 
     {/* Delete comment confirmation dialog */}
-    <Dialog open={deleteCommentId !== null} onOpenChange={(open) => { if (!open) setDeleteCommentId(null); }}>
+    <Dialog open={deleteCommentId !== null} onOpenChange={(open) => { if (!open && !remove.isPending) setDeleteCommentId(null); }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Hapus Komentar</DialogTitle>
@@ -398,8 +397,11 @@ export function CommentSection({ taskId, myRole }: CommentSectionProps) {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setDeleteCommentId(null)}>Batal</Button>
-          <Button variant="destructive" onClick={confirmDeleteComment}>Hapus</Button>
+          <Button variant="outline" onClick={() => setDeleteCommentId(null)} disabled={remove.isPending}>Batal</Button>
+          <Button variant="destructive" onClick={confirmDeleteComment} disabled={remove.isPending}>
+            {remove.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Hapus
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

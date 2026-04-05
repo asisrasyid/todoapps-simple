@@ -264,15 +264,19 @@ function ManageUsers() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<UserType | null>(null);
+  const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
 
   const toggleActive = useMutation({
-    mutationFn: (u: UserType) =>
-      apiUpdateUser(u.id, { isActive: !u.isActive }),
+    mutationFn: async (u: UserType) => {
+      setTogglingUserId(u.id);
+      return apiUpdateUser(u.id, { isActive: !u.isActive });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       toast({ title: "User updated", variant: "success" });
     },
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onSettled: () => setTogglingUserId(null),
   });
 
   return (
@@ -311,15 +315,16 @@ function ManageUsers() {
                 {ROLE_CONFIG[u.roleGlobal].label}
               </span>
               <button
-                onClick={() => toggleActive.mutate(u)}
-                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => !togglingUserId && toggleActive.mutate(u)}
+                disabled={!!togglingUserId}
+                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-60"
                 title={u.isActive ? "Deactivate" : "Activate"}
               >
-                {u.isActive ? (
-                  <ToggleRight className="h-5 w-5 text-green-400" />
-                ) : (
-                  <ToggleLeft className="h-5 w-5 text-muted-foreground" />
-                )}
+                {togglingUserId === u.id
+                  ? <Loader2 className="h-5 w-5 animate-spin" />
+                  : u.isActive
+                    ? <ToggleRight className="h-5 w-5 text-green-400" />
+                    : <ToggleLeft className="h-5 w-5 text-muted-foreground" />}
               </button>
               <Button
                 size="sm"
@@ -440,6 +445,7 @@ function ApiKeys() {
   const queryClient = useQueryClient();
   const [newKeyName, setNewKeyName] = useState("");
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const [revokingKeyId, setRevokingKeyId] = useState<string | null>(null);
 
   const { data: keys, isLoading } = useQuery({
     queryKey: ["apikeys"],
@@ -457,12 +463,16 @@ function ApiKeys() {
   });
 
   const revoke = useMutation({
-    mutationFn: (keyId: string) => apiRevokeApiKey(keyId),
+    mutationFn: async (keyId: string) => {
+      setRevokingKeyId(keyId);
+      return apiRevokeApiKey(keyId);
+    },
     onSuccess: () => {
       toast({ title: "API key revoked", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ["apikeys"] });
     },
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onSettled: () => setRevokingKeyId(null),
   });
 
   return (
@@ -548,7 +558,9 @@ function ApiKeys() {
                   className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
                   title="Revoke key"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  {revokingKeyId === k.id
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Trash2 className="h-3.5 w-3.5" />}
                 </Button>
               </div>
             ))}
