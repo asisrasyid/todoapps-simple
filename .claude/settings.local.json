@@ -20,7 +20,9 @@
       "Read(//c/Users/m.aziz/.claude/plugins/marketplaces/ui-ux-pro-max-skill/.claude/skills/ui-ux-pro-max/**)",
       "Bash(python scripts/search.py \"productivity task management kanban todo saas dark modern\" --design-system -f markdown)",
       "Bash(python scripts/search.py \"kanban task card sidebar navigation\" --domain ux -n 15)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(npx next:*)"
     ]
   }
 }

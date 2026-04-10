@@ -21,8 +21,9 @@ export function getSession(): Session | null {
 }
 
 export function clearSession(): void {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  // Remove all app-specific keys (sm_* prefix) — clears session, tour state, notifications, etc.
+  const keysToRemove = Object.keys(localStorage).filter((k) => k.startsWith("sm_"));
+  keysToRemove.forEach((k) => localStorage.removeItem(k));
 }
 
 export function isAuthenticated(): boolean {

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ShieldCheck, CheckCircle, XCircle, Clock, Loader2, ChevronRight } from "lucide-react";
+import { ShieldCheck, CheckCircle, XCircle, Clock, Loader2, ChevronRight, Pencil } from "lucide-react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,7 +30,10 @@ export default function ApprovalsPage() {
   async function handleApprove(approval: Approval) {
     try {
       await approveTask.mutateAsync(approval.id);
-      toast({ title: "Task approved", description: `"${approval.taskTitle}" moved to ${approval.toColumnName}`, variant: "success" });
+      const desc = approval.type === "edit"
+        ? `Perubahan pada "${approval.taskTitle}" telah diterapkan.`
+        : `"${approval.taskTitle}" dipindah ke ${approval.toColumnName}.`;
+      toast({ title: "Approved", description: desc, variant: "success" });
     } catch (err: unknown) {
       toast({ title: "Failed to approve", variant: "destructive" });
     }
@@ -127,6 +130,8 @@ export default function ApprovalsPage() {
                   onApprove={() => handleApprove(approval)}
                   onReject={() => setRejectModal(approval)}
                   approving={approveTask.isPending}
+                  isOwnRequest={approval.isOwnRequest}
+                  canApprove={approval.canApprove}
                 />
               </motion.div>
             ))}
@@ -138,20 +143,24 @@ export default function ApprovalsPage() {
       <Dialog open={!!rejectModal} onOpenChange={() => setRejectModal(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Task Movement</DialogTitle>
+            <DialogTitle>
+              {rejectModal?.type === "edit" ? "Tolak Perubahan Task" : "Tolak Perpindahan Task"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {rejectModal && (
               <p className="text-sm text-muted-foreground">
-                Rejecting move of{" "}
-                <span className="font-medium text-foreground">"{rejectModal.taskTitle}"</span>{" "}
-                to <span className="font-medium text-foreground">{rejectModal.toColumnName}</span>.
+                {rejectModal.type === "edit" ? (
+                  <>Menolak perubahan pada <span className="font-medium text-foreground">"{rejectModal.taskTitle}"</span>. Perubahan tidak akan diterapkan.</>
+                ) : (
+                  <>Menolak perpindahan <span className="font-medium text-foreground">"{rejectModal.taskTitle}"</span> ke <span className="font-medium text-foreground">{rejectModal.toColumnName}</span>.</>
+                )}
               </p>
             )}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Reason (optional)</label>
+              <label className="text-sm font-medium">Alasan (opsional)</label>
               <Textarea
-                placeholder="Explain why this move is rejected…"
+                placeholder="Jelaskan alasan penolakan…"
                 value={rejectNote}
                 onChange={(e) => setRejectNote(e.target.value)}
                 rows={3}
@@ -159,10 +168,10 @@ export default function ApprovalsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectModal(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setRejectModal(null)}>Batal</Button>
             <Button variant="destructive" onClick={handleReject} disabled={rejectTask.isPending}>
               {rejectTask.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Reject
+              Tolak
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -171,50 +180,96 @@ export default function ApprovalsPage() {
   );
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  title: "Judul",
+  description: "Deskripsi",
+  priority: "Prioritas",
+  deadline: "Deadline",
+};
+
 function ApprovalCard({
   approval,
   onApprove,
   onReject,
   approving,
+  isOwnRequest,
+  canApprove,
 }: {
   approval: Approval;
   onApprove: () => void;
   onReject: () => void;
   approving: boolean;
+  isOwnRequest?: boolean;
+  canApprove?: boolean;
 }) {
+  const isEdit = approval.type === "edit";
+
   return (
     <div className="rounded-2xl border-2 border-border bg-card p-4 space-y-3 shadow-toon hover:shadow-toon-primary transition-shadow duration-150">
       <div className="flex items-start gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/15">
-          <Clock className="h-4 w-4 text-amber-400" />
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isEdit ? "bg-sky-500/15" : "bg-amber-500/15"}`}>
+          {isEdit
+            ? <Pencil className="h-4 w-4 text-sky-400" />
+            : <Clock className="h-4 w-4 text-amber-400" />}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium truncate">{approval.taskTitle}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-medium truncate">{approval.taskTitle}</p>
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isEdit ? "bg-sky-500/15 text-sky-400" : "bg-amber-500/15 text-amber-400"}`}>
+              {isEdit ? "Edit" : "Pindah Kolom"}
+            </span>
+            {isOwnRequest && (
+              <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-violet-500/15 text-violet-400">
+                Request Anda
+              </span>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
-            {approval.boardName} · Requested by {approval.requestedByName} · {formatDate(approval.createdAt)}
+            {approval.boardName} · Diminta oleh {approval.requestedByName} · {formatDate(approval.createdAt)}
           </p>
         </div>
       </div>
 
-      {/* Move path */}
-      <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm">
-        <span className="text-muted-foreground">{approval.fromColumnName}</span>
-        <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
-        <span className="font-medium text-amber-400">{approval.toColumnName}</span>
-        <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
-      </div>
+      {/* Content: edit diff or move path */}
+      {isEdit && approval.pendingUpdates ? (
+        <div className="rounded-lg bg-muted/40 px-3 py-2 space-y-1.5">
+          {Object.entries(approval.pendingUpdates).map(([field, value]) => (
+            <div key={field} className="flex items-start gap-2 text-xs">
+              <span className="shrink-0 text-muted-foreground w-20">{FIELD_LABELS[field] ?? field}</span>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 mt-0.5" />
+              <span className="font-medium text-sky-400 break-all">
+                {field === "deadline" ? (value ? formatDate(String(value)) : "Dihapus") : String(value)}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm">
+          <span className="text-muted-foreground">{approval.fromColumnName}</span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+          <span className="font-medium text-amber-400">{approval.toColumnName}</span>
+          <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
+        </div>
+      )}
 
-      {/* Actions */}
-      <div className="flex gap-2 justify-end">
-        <Button data-tour="reject-btn" size="sm" variant="outline" onClick={onReject} className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10">
-          <XCircle className="h-4 w-4" />
-          Reject
-        </Button>
-        <Button data-tour="approve-btn" size="sm" onClick={onApprove} disabled={approving} className="gap-1.5">
-          {approving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-          Approve
-        </Button>
-      </div>
+      {/* Actions — only shown to owner/approver */}
+      {canApprove && (
+        <div className="flex gap-2 justify-end">
+          <Button data-tour="reject-btn" size="sm" variant="outline" onClick={onReject} className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10">
+            <XCircle className="h-4 w-4" />
+            Tolak
+          </Button>
+          <Button data-tour="approve-btn" size="sm" onClick={onApprove} disabled={approving} className="gap-1.5">
+            {approving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+            Approve
+          </Button>
+        </div>
+      )}
+      {isOwnRequest && !canApprove && (
+        <div className="flex justify-end">
+          <span className="text-xs text-muted-foreground italic">Menunggu persetujuan approver…</span>
+        </div>
+      )}
     </div>
   );
 }

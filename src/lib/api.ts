@@ -128,15 +128,15 @@ export async function apiCreateTask(
 }
 
 export async function apiUpdateTask(taskId: string, updates: Record<string, unknown>) {
-  return callAPI("updateTask", { taskId, ...updates }, getToken());
+  return callAPI<{ approvalRequested?: boolean } | null>("updateTask", { taskId, ...updates }, getToken());
 }
 
 export async function apiDeleteTask(taskId: string) {
   return callAPI("deleteTask", { taskId }, getToken());
 }
 
-export async function apiMoveTask(taskId: string, toColumnId: string, position: number) {
-  return callAPI("moveTask", { taskId, toColumnId, position }, getToken());
+export async function apiMoveTask(taskId: string, toColumnId: string, position: number, note?: string) {
+  return callAPI("moveTask", { taskId, toColumnId, position, note }, getToken());
 }
 
 export async function apiReorderTasks(columnId: string, taskIds: string[]) {

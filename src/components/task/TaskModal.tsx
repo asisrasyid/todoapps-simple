@@ -10,6 +10,7 @@ import {
   CheckSquare,
   AlignLeft,
   Loader2,
+  ShieldCheck,
 } from "lucide-react";
 import { Task, Role, BoardMember, Label, Priority } from "@/types";
 import { canEdit, canManageColumns, PRIORITY_CONFIG, LABEL_COLORS, isOverdue } from "@/lib/utils";
@@ -30,6 +31,8 @@ import {
   useLabelMutations,
   useAssigneeMutations,
 } from "@/hooks/useBoard";
+import { apiUpdateTask } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Dialog,
@@ -46,10 +49,11 @@ interface TaskModalProps {
   myRole: Role;
   members: BoardMember[];
   labels: Label[];
+  columnRequiresApproval?: boolean;
   onClose: () => void;
 }
 
-export function TaskModal({ task, boardId, myRole, members, labels, onClose }: TaskModalProps) {
+export function TaskModal({ task, boardId, myRole, members, labels, columnRequiresApproval = false, onClose }: TaskModalProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
   const [editingTitle, setEditingTitle] = useState(false);
@@ -68,8 +72,19 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
   const { createSubTask, updateSubTask, deleteSubTask } = useSubTaskMutations(boardId);
   const { createLabel, deleteLabel, addTaskLabel, removeTaskLabel } = useLabelMutations(boardId);
   const { addAssignee, removeAssignee } = useAssigneeMutations(boardId);
+  const qc = useQueryClient();
 
   const editable = canEdit(myRole);
+  const needsApproval = myRole === "contributor" && columnRequiresApproval;
+
+  // Helper: save a field change via approval queue (contributor + requiresApproval column)
+  async function saveViaApproval(updates: Record<string, unknown>) {
+    const result = await apiUpdateTask(task.id, updates);
+    if (result?.approvalRequested) {
+      qc.invalidateQueries({ queryKey: ["board", boardId] });
+      toast({ title: "Perubahan dikirim untuk approval", description: "Akan diterapkan setelah disetujui.", variant: "success" });
+    }
+  }
 
   // Sync task data when it changes
   useEffect(() => {
@@ -81,7 +96,12 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
     if (!title.trim() || title === task.title) { setEditingTitle(false); setTitle(task.title); return; }
     setSavingTitle(true);
     try {
-      await updateTask.mutateAsync({ taskId: task.id, updates: { title: title.trim() } });
+      if (needsApproval) {
+        await saveViaApproval({ title: title.trim() });
+        setTitle(task.title); // revert — change not applied yet
+      } else {
+        await updateTask.mutateAsync({ taskId: task.id, updates: { title: title.trim() } });
+      }
     } catch { toast({ title: "Failed to update title", variant: "destructive" }); setTitle(task.title); }
     finally { setSavingTitle(false); setEditingTitle(false); }
   }
@@ -90,15 +110,25 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
     if (description === (task.description || "")) { setEditingDesc(false); return; }
     setSavingDesc(true);
     try {
-      await updateTask.mutateAsync({ taskId: task.id, updates: { description } });
+      if (needsApproval) {
+        await saveViaApproval({ description });
+        setDescription(task.description || ""); // revert
+      } else {
+        await updateTask.mutateAsync({ taskId: task.id, updates: { description } });
+      }
     } catch { toast({ title: "Failed to update description", variant: "destructive" }); }
     finally { setSavingDesc(false); setEditingDesc(false); }
   }
 
   async function handlePriorityChange(priority: Priority) {
+    if (priority === task.priority) return;
     setUpdatingPriority(true);
     try {
-      await updateTask.mutateAsync({ taskId: task.id, updates: { priority } });
+      if (needsApproval) {
+        await saveViaApproval({ priority });
+      } else {
+        await updateTask.mutateAsync({ taskId: task.id, updates: { priority } });
+      }
     } catch { toast({ title: "Failed to update priority", variant: "destructive" }); }
     finally { setUpdatingPriority(false); }
   }
@@ -106,7 +136,11 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
   async function handleDeadlineChange(deadline: string) {
     setUpdatingDeadline(true);
     try {
-      await updateTask.mutateAsync({ taskId: task.id, updates: { deadline } });
+      if (needsApproval) {
+        await saveViaApproval({ deadline });
+      } else {
+        await updateTask.mutateAsync({ taskId: task.id, updates: { deadline } });
+      }
     } catch { toast({ title: "Failed to update deadline", variant: "destructive" }); }
     finally { setUpdatingDeadline(false); }
   }
@@ -191,6 +225,14 @@ export function TaskModal({ task, boardId, myRole, members, labels, onClose }: T
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6 kanban-scroll">
+          {/* Approval required banner */}
+          {needsApproval && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              <span>Kolom ini memerlukan approval. Setiap perubahan akan dikirim ke approver sebelum diterapkan.</span>
+            </div>
+          )}
+
           {/* Priority + Deadline row */}
           <div className="flex flex-wrap gap-3">
             {/* Priority */}

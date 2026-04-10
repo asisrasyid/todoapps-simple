@@ -20,6 +20,7 @@ import { cn, ROLE_CONFIG } from "@/lib/utils";
 import { clearSession, getStoredUser } from "@/lib/auth";
 import type { User as UserType } from "@/types";
 import { apiLogout } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useApprovals } from "@/hooks/useApprovals";
 import { canApprove } from "@/lib/utils";
@@ -52,11 +53,13 @@ export function Sidebar() {
   const { collapsed, mobileOpen, toggleCollapsed, setMobileOpen } = useSidebar();
   const { theme, setTheme } = useTheme();
   const { startMainTour } = useTour();
+  const qc = useQueryClient();
 
   async function handleLogout() {
     setLoggingOut(true);
     try { await apiLogout(); } catch {}
     clearSession();
+    qc.clear(); // hapus semua cache TanStack Query
     router.push("/login");
   }
 

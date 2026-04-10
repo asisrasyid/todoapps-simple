@@ -55,13 +55,44 @@ function updateTask(params, userId) {
   if (!role || role === "viewer") return err("Insufficient permissions");
   if (role === "contributor" && task.created_by !== userId) return err("Can only edit own tasks");
 
-  var updates = { updated_at: now() };
-  if (params.title !== undefined) updates.title = params.title;
-  if (params.description !== undefined) updates.description = params.description;
-  if (params.priority !== undefined) updates.priority = params.priority;
-  if (params.deadline !== undefined) updates.deadline = params.deadline;
+  var fieldUpdates = {};
+  if (params.title !== undefined) fieldUpdates.title = params.title;
+  if (params.description !== undefined) fieldUpdates.description = params.description;
+  if (params.priority !== undefined) fieldUpdates.priority = params.priority;
+  if (params.deadline !== undefined) fieldUpdates.deadline = params.deadline;
 
-  updateRow("Tasks", "id", taskId, updates);
+  // If contributor is editing a task in a requiresApproval column, queue for review
+  if (role === "contributor" && Object.keys(fieldUpdates).length > 0) {
+    var col = findRow("Columns", "id", task.column_id);
+    var requiresApproval = col && (col.requires_approval === "true" || col.requires_approval === true);
+    if (requiresApproval) {
+      var approvalId = generateId();
+      // Cancel any existing pending edit approvals for this task
+      var existing = findRows("Approvals", "task_id", taskId).filter(function(a) {
+        return a.status === "pending" && (a.type === "edit" || a.type === "");
+      });
+      existing.forEach(function(a) { updateRow("Approvals", "id", a.id, { status: "cancelled" }); });
+
+      appendRow("Approvals", {
+        id: approvalId,
+        task_id: taskId,
+        type: "edit",
+        from_column_id: task.column_id,
+        to_column_id: task.column_id,
+        requested_by: userId,
+        approver_id: "",
+        status: "pending",
+        note: params.note || "",
+        pending_updates: JSON.stringify(fieldUpdates),
+        created_at: now()
+      });
+      invalidateCache("brd_" + task.board_id + "_" + userId);
+      return ok({ approvalRequested: true, approvalId: approvalId });
+    }
+  }
+
+  fieldUpdates.updated_at = now();
+  updateRow("Tasks", "id", taskId, fieldUpdates);
   invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok(null);
 }
@@ -107,12 +138,14 @@ function moveTask(params, userId) {
     appendRow("Approvals", {
       id: approvalId,
       task_id: taskId,
+      type: "move",
       from_column_id: task.column_id,
       to_column_id: toColumnId,
       requested_by: userId,
       approver_id: "",
       status: "pending",
       note: params.note || "",
+      pending_updates: "",
       created_at: now()
     });
     invalidateCache("brd_" + task.board_id + "_" + userId);
@@ -304,8 +337,11 @@ function getPendingApprovals(params, userId) {
   var filtered = allApprovals.filter(function(a) {
     var task = taskMap[a.task_id];
     if (!task) return false;
+    // Owner/approver sees all pending approvals for their boards
     var role = getBoardRole(task.board_id, userId);
-    return role === "owner" || role === "approver";
+    if (role === "owner" || role === "approver") return true;
+    // Contributor sees their own submitted requests
+    return String(a.requested_by) === String(userId);
   });
 
   return ok(filtered.map(function(a) {
@@ -314,12 +350,18 @@ function getPendingApprovals(params, userId) {
     var toCol = colMap[a.to_column_id];
     var requester = userMap[a.requested_by];
     var board = task ? boardMap[task.board_id] : null;
+    var pendingUpdates = null;
+    if (a.pending_updates) {
+      try { pendingUpdates = JSON.parse(a.pending_updates); } catch (e) {}
+    }
+    var userRole = task ? getBoardRole(task.board_id, userId) : null;
     return {
       id: a.id,
       taskId: a.task_id,
       taskTitle: task ? task.title : "Unknown",
       boardId: task ? task.board_id : "",
       boardName: board ? board.name : "Unknown",
+      type: a.type || "move",
       fromColumnId: a.from_column_id,
       fromColumnName: fromCol ? fromCol.name : "Unknown",
       toColumnId: a.to_column_id,
@@ -329,7 +371,10 @@ function getPendingApprovals(params, userId) {
       approverId: a.approver_id || null,
       status: a.status,
       note: a.note || "",
-      createdAt: a.created_at
+      pendingUpdates: pendingUpdates,
+      createdAt: a.created_at,
+      isOwnRequest: String(a.requested_by) === String(userId),
+      canApprove: userRole === "owner" || userRole === "approver"
     };
   }));
 }
@@ -346,7 +391,18 @@ function approveTask(params, userId) {
   if (role !== "owner" && role !== "approver") return err("Insufficient permissions");
 
   updateRow("Approvals", "id", approval.id, { status: "approved", approver_id: userId });
-  updateRow("Tasks", "id", task.id, { column_id: approval.to_column_id, updated_at: now() });
+
+  if (approval.type === "edit") {
+    // Apply the queued field changes to the task
+    var pendingUpdates = {};
+    try { pendingUpdates = JSON.parse(approval.pending_updates || "{}"); } catch (e) {}
+    pendingUpdates.updated_at = now();
+    updateRow("Tasks", "id", task.id, pendingUpdates);
+  } else {
+    // Move task to the target column (original behavior)
+    updateRow("Tasks", "id", task.id, { column_id: approval.to_column_id, updated_at: now() });
+  }
+
   invalidateCache("brd_" + task.board_id + "_" + userId);
   return ok(null);
 }

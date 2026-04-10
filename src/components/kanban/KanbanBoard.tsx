@@ -119,6 +119,7 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
   const [deletingColumn, setDeletingColumn] = useState(false);
 
   const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const originalTaskRef = useRef<Task | null>(null);
 
   const sortedColumns = [...columns].sort((a, b) => a.position - b.position);
 
@@ -134,7 +135,10 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
 
   function onDragStart({ active }: DragStartEvent) {
     const data = active.data.current;
-    if (data?.type === "task") setActiveTask(data.task);
+    if (data?.type === "task") {
+      setActiveTask(data.task);
+      originalTaskRef.current = data.task;
+    }
     if (data?.type === "column") setActiveColumn(data.column);
   }
 
@@ -182,6 +186,11 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
     // Task move
     if (activeData?.type === "task") {
       const task = activeData.task as Task;
+      // Use ref to get original column — activeData.task.columnId may already be stale
+      // after optimistic updates during onDragOver re-renders
+      const originalTask = originalTaskRef.current ?? task;
+      originalTaskRef.current = null;
+
       const toColId =
         overData?.type === "column"
           ? (over.id as string)
@@ -193,11 +202,11 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
       const toCol = columns.find((c) => c.id === toColId);
       if (!toCol) return;
 
-      // Check if approval needed
-      if (toCol.requiresApproval && myRole === "contributor" && toColId !== task.columnId) {
-        setApprovalPending({ task, toColumn: toCol });
-        // Revert optimistic
-        moveTaskOptimistic(task.id, task.columnId, task.position);
+      // Check if approval needed — compare against original column, not the optimistically-updated one
+      if (toCol.requiresApproval && myRole === "contributor" && toColId !== originalTask.columnId) {
+        setApprovalPending({ task: originalTask, toColumn: toCol });
+        // Revert optimistic using original column/position
+        moveTaskOptimistic(originalTask.id, originalTask.columnId, originalTask.position);
         return;
       }
 
@@ -208,7 +217,7 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
       try {
         await apiMoveTask(task.id, toColId, position);
       } catch (err: unknown) {
-        moveTaskOptimistic(task.id, task.columnId, task.position);
+        moveTaskOptimistic(originalTask.id, originalTask.columnId, originalTask.position);
         toast({ title: "Failed to move task", variant: "destructive" });
       }
     }
@@ -491,6 +500,7 @@ export function KanbanBoard({ boardData, myRole }: KanbanBoardProps) {
             myRole={myRole}
             members={members}
             labels={labels}
+            columnRequiresApproval={columns.find((c) => c.id === selectedTask.columnId)?.requiresApproval ?? false}
             onClose={closeTask}
           />
         )}

@@ -24,7 +24,7 @@ export function ApprovalRequestModal({ task, toColumn, boardId, onClose }: Appro
     setLoading(true);
     try {
       // Call moveTask — backend will detect requiresApproval and create approval record instead
-      await apiMoveTask(task.id, toColumn.id, 0);
+      await apiMoveTask(task.id, toColumn.id, 0, note || undefined);
       toast({ title: "Approval requested", description: "Your request has been sent to approvers.", variant: "success" });
       qc.invalidateQueries({ queryKey: ["board", boardId] });
       onClose();

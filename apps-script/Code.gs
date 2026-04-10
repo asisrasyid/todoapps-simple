@@ -134,7 +134,7 @@ function setupSpreadsheet() {
       "SubTasks":      ["id", "task_id", "title", "is_completed", "position"],
       "Labels":        ["id", "board_id", "name", "color"],
       "Task_Labels":   ["task_id", "label_id"],
-      "Approvals":        ["id", "task_id", "from_column_id", "to_column_id", "requested_by", "approver_id", "status", "note", "created_at"],
+      "Approvals":        ["id", "task_id", "type", "from_column_id", "to_column_id", "requested_by", "approver_id", "status", "note", "pending_updates", "created_at"],
       "Task_Attachments": ["id", "task_id", "file_id", "file_name", "mime_type", "file_size", "created_by", "created_at"],
       "Task_Comments":    ["id", "task_id", "parent_id", "user_id", "content", "created_at"]
     };
@@ -211,7 +211,7 @@ function testSetup() {
   var expected = {
     "Users": 8, "Sessions": 3, "Boards": 6, "Board_Members": 3,
     "Columns": 6, "Tasks": 11, "Task_Assignees": 2, "SubTasks": 5,
-    "Labels": 4, "Task_Labels": 2, "Approvals": 9, "Task_Attachments": 8
+    "Labels": 4, "Task_Labels": 2, "Approvals": 11, "Task_Attachments": 8
   };
 
   var ss2 = SpreadsheetApp.openById(SS_ID);
@@ -265,7 +265,7 @@ function resetSheetHeaders() {
     "SubTasks":      ["id", "task_id", "title", "is_completed", "position"],
     "Labels":        ["id", "board_id", "name", "color"],
     "Task_Labels":   ["task_id", "label_id"],
-    "Approvals":        ["id", "task_id", "from_column_id", "to_column_id", "requested_by", "approver_id", "status", "note", "created_at"],
+    "Approvals":        ["id", "task_id", "type", "from_column_id", "to_column_id", "requested_by", "approver_id", "status", "note", "pending_updates", "created_at"],
     "Task_Attachments": ["id", "task_id", "file_id", "file_name", "mime_type", "file_size", "created_by", "created_at"]
   };
 
@@ -289,4 +289,60 @@ function resetSheetHeaders() {
 
   SpreadsheetApp.flush();
   Logger.log("=== resetSheetHeaders COMPLETE ===");
+}
+
+// ─── Migration: add type + pending_updates columns to Approvals sheet ─────────
+// Run ONCE on existing spreadsheets to support edit-approval feature.
+function migrateApprovalsSchema() {
+  Logger.log("=== migrateApprovalsSchema START ===");
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var sheet = ss.getSheetByName("Approvals");
+  if (!sheet) { Logger.log("[ERROR] Approvals sheet not found"); return; }
+
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  Logger.log("Current headers: " + headers.join(", "));
+
+  // Insert 'type' after 'task_id' (index 1) if missing
+  if (headers.indexOf("type") === -1) {
+    var typeCol = 3; // after id(1), task_id(2)
+    sheet.insertColumnAfter(2);
+    sheet.getRange(1, typeCol).setValue("type");
+    // Default existing rows to "move"
+    var lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.getRange(2, typeCol, lastRow - 1, 1).setValue("move");
+    }
+    Logger.log("[ADDED] 'type' column at position " + typeCol);
+    headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  } else {
+    Logger.log("[OK] 'type' column already exists");
+  }
+
+  // Insert 'pending_updates' before 'created_at' if missing
+  if (headers.indexOf("pending_updates") === -1) {
+    var createdAtIdx = headers.indexOf("created_at");
+    if (createdAtIdx !== -1) {
+      sheet.insertColumnBefore(createdAtIdx + 1);
+      sheet.getRange(1, createdAtIdx + 1).setValue("pending_updates");
+      Logger.log("[ADDED] 'pending_updates' column before 'created_at'");
+    } else {
+      // Append at end
+      var lastCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, lastCol).setValue("pending_updates");
+      Logger.log("[ADDED] 'pending_updates' column at end");
+    }
+  } else {
+    Logger.log("[OK] 'pending_updates' column already exists");
+  }
+
+  // Style new headers
+  var newLastCol = sheet.getLastColumn();
+  sheet.getRange(1, 1, 1, newLastCol)
+    .setBackground("#1e293b")
+    .setFontColor("#e2e8f0")
+    .setFontWeight("bold");
+
+  SpreadsheetApp.flush();
+  Logger.log("Final headers: " + sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].join(", "));
+  Logger.log("=== migrateApprovalsSchema COMPLETE ===");
 }

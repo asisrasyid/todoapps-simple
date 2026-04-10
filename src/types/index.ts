@@ -85,6 +85,7 @@ export interface Approval {
   taskTitle: string;
   boardId: string;
   boardName: string;
+  type: "move" | "edit";
   fromColumnId: string;
   fromColumnName: string;
   toColumnId: string;
@@ -94,7 +95,10 @@ export interface Approval {
   approverId: string | null;
   status: ApprovalStatus;
   note: string;
+  pendingUpdates: Record<string, unknown> | null;
   createdAt: string;
+  isOwnRequest?: boolean;
+  canApprove?: boolean;
 }
 
 export interface BoardData {
