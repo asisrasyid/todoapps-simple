@@ -227,7 +227,8 @@ export function getDriveUrls(fileId: string) {
   return {
     preview: `https://drive.google.com/file/d/${fileId}/preview`,
     thumbnail: `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`,
-    image: `https://drive.google.com/uc?export=view&id=${fileId}`,
+    // uc?export=view deprecated — thumbnail with large size is reliable & CORS-safe
+    image: `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`,
     download: `https://drive.google.com/uc?export=download&id=${fileId}`,
   };
 }

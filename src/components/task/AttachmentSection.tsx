@@ -81,6 +81,7 @@ function PreviewModal({
   attachment: Attachment;
   onClose: () => void;
 }) {
+  const [imgError, setImgError] = useState(false);
   const urls     = getDriveUrls(attachment.fileId);
   const category = getFileCategory(attachment.mimeType);
   const accent   = CATEGORY_ACCENT[category];
@@ -170,7 +171,7 @@ function PreviewModal({
 
         {/* ── Content area ── */}
         <div className="flex-1 overflow-hidden bg-muted/20 min-h-0">
-          {category === "image" ? (
+          {category === "image" && !imgError ? (
             <motion.div
               className="flex h-full w-full items-center justify-center p-6"
               initial={{ opacity: 0, scale: 0.96 }}
@@ -183,6 +184,7 @@ function PreviewModal({
                 alt={attachment.fileName}
                 className="max-h-full max-w-full object-contain rounded-xl"
                 style={{ boxShadow: `0 8px 32px hsl(var(--toon-shadow-base) / 0.4)` }}
+                onError={() => setImgError(true)}
               />
             </motion.div>
           ) : (
